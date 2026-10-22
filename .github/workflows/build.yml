@@ -7,14 +7,36 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A release build must never be cancelled while it produces artifacts.
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+
 jobs:
   test:
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
+      - name: Cache Bun dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+      - name: Cache Electron downloads
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/electron
+            ~/Library/Caches/electron
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
       - name: Install Linux native build/test dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libsystemd-dev dbus
+        run: |
+          # the runner image ships the apt lists, so the update is only paid for when they
+          # are missing. on the image it is ~110s of the job, and nothing else needs it
+          if ! ls /var/lib/apt/lists/*_Packages >/dev/null 2>&1; then sudo apt-get update; fi
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libsystemd-dev dbus
       - run: bun install --frozen-lockfile
       - name: Install Electron before parallel tests
         run: bunx install-electron --no
@@ -37,13 +59,51 @@ jobs:
           - os: macos-latest
             command: bun run dist:mac
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
+      - name: Cache Bun dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+      - name: Cache Electron downloads
+        if: runner.os != 'Windows'
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/electron
+            ~/Library/Caches/electron
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+      - name: Cache Electron downloads (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v6
+        with:
+          path: ~\AppData\Local\electron
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+      - name: Cache electron-builder downloads
+        if: runner.os != 'Windows'
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron-builder
+          key: electron-builder-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+      - name: Cache electron-builder downloads (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v6
+        with:
+          path: ~\AppData\Local\electron-builder
+          key: electron-builder-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
       - run: bun install --frozen-lockfile
       - name: Linux packaging and native dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libsystemd-dev dbus libarchive-tools squashfs-tools
+        run: |
+          # the runner image ships the apt lists, so the update is only paid for when they
+          # are missing. on the image it is ~110s of the job, and nothing else needs it
+          if ! ls /var/lib/apt/lists/*_Packages >/dev/null 2>&1; then sudo apt-get update; fi
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libsystemd-dev dbus libarchive-tools squashfs-tools
       - name: Native portal helper tests (private D-Bus)
         if: runner.os == 'Linux'
         run: bun run test:native-portal
@@ -121,21 +181,25 @@ jobs:
         run: bun run test:windows-shortcuts
       - name: Upload Windows shortcut verification
         if: always() && runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-shortcut-verification
           path: test-results/windows-shortcuts.json
           if-no-files-found: error
+          # Already-compressed payloads: re-compressing them only costs time.
+          compression-level: 0
       - name: Upload Windows audio verification kit
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-audio-verification
           path: |
             native/out/win-audio-capture.exe
             scripts/windows-audio-smoke.ps1
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+          # Already-compressed payloads: re-compressing them only costs time.
+          compression-level: 0
+      - uses: actions/upload-artifact@v7
         with:
           name: packages-${{ matrix.os }}
           # Installers only: release/* would also drag the unpacked app directories along.
@@ -149,15 +213,18 @@ jobs:
             release/*.blockmap
             release/latest*.yml
           if-no-files-found: error
+          # Installers are already compressed: compression level 0 only saves time.
+          compression-level: 0
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: package
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true

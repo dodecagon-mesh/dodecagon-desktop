@@ -11,6 +11,7 @@
     "build:windows-audio": "powershell -NoProfile -File scripts/build-windows-audio.ps1",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "verify": "bun run typecheck && bun run test && bun run test:native-portal",
     "test:audio-playback": "bun run build && python3 test/audio-playback-native/run.py && DODECAGON_AUDIO_PROBE_CASE=preferences python3 test/audio-playback-native/run.py",
     "test:audio-share": "bun run build && python3 test/pulse-share-native/run.py application && python3 test/pulse-share-native/run.py screen",
     "test:native-portal": "bash scripts/test-portal-metadata-native.sh",
