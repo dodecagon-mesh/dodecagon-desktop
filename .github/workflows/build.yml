@@ -33,9 +33,11 @@ jobs:
           key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
       - name: Install Linux native build/test dependencies
         run: |
-          # the runner image ships the apt lists, so the update is only paid for when they
-          # are missing. on the image it is ~110s of the job, and nothing else needs it
-          if ! ls /var/lib/apt/lists/*_Packages >/dev/null 2>&1; then sudo apt-get update; fi
+          # the runner image ships apt lists that are older than the mirror pool, so the
+          # version the lists name can already be gone from the pool and the install
+          # 404s. refresh the lists on every run, and skip the translation indexes:
+          # they are a sixth of the index traffic and nothing here needs them.
+          sudo apt-get update -o Acquire::Languages=none
           sudo apt-get install -y --no-install-recommends build-essential pkg-config libsystemd-dev dbus
       - run: bun install --frozen-lockfile
       - name: Install Electron before parallel tests
@@ -100,9 +102,11 @@ jobs:
       - name: Linux packaging and native dependencies
         if: runner.os == 'Linux'
         run: |
-          # the runner image ships the apt lists, so the update is only paid for when they
-          # are missing. on the image it is ~110s of the job, and nothing else needs it
-          if ! ls /var/lib/apt/lists/*_Packages >/dev/null 2>&1; then sudo apt-get update; fi
+          # the runner image ships apt lists that are older than the mirror pool, so the
+          # version the lists name can already be gone from the pool and the install
+          # 404s. refresh the lists on every run, and skip the translation indexes:
+          # they are a sixth of the index traffic and nothing here needs them.
+          sudo apt-get update -o Acquire::Languages=none
           sudo apt-get install -y --no-install-recommends build-essential pkg-config libsystemd-dev dbus libarchive-tools squashfs-tools
       - name: Native portal helper tests (private D-Bus)
         if: runner.os == 'Linux'
