@@ -91,7 +91,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "RND332",
+        "owner": "dodecagon-mesh",
         "repo": "sharkord-desktop"
       }
     ]
@@ -107,11 +107,11 @@
   "trustedDependencies": [
     "electron"
   ],
-  "homepage": "https://github.com/RND332/sharkord-desktop",
+  "homepage": "https://github.com/dodecagon-mesh/sharkord-desktop",
   "desktopName": "sharkord-desktop",
   "repository": {
     "type": "git",
-    "url": "https://github.com/RND332/sharkord-desktop.git"
+    "url": "https://github.com/dodecagon-mesh/sharkord-desktop.git"
   },
   "dependencies": {
     "@sentry/electron": "^8.2.0",

@@ -1,6 +1,6 @@
 # Sharkord Desktop
 
-[![build](https://github.com/RND332/sharkord-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/RND332/sharkord-desktop/actions/workflows/build.yml)
+[![build](https://github.com/dodecagon-mesh/sharkord-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/dodecagon-mesh/sharkord-desktop/actions/workflows/build.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Electron client for a self-hosted [Sharkord](https://github.com/Sharkord/sharkord) instance whose
@@ -28,7 +28,7 @@ Builds for all three platforms are produced by CI.
 
 ## Install
 
-Download from [Releases](https://github.com/RND332/sharkord-desktop/releases): AppImage/deb,
+Download from [Releases](https://github.com/dodecagon-mesh/sharkord-desktop/releases): AppImage/deb,
 Windows installer/portable, macOS dmg/zip. macOS and Windows builds are unsigned, so expect a
 Gatekeeper/SmartScreen warning.
 
@@ -153,7 +153,7 @@ Arch users can also `sudo pacman -U` the `.pacman` from Releases.
 
 ### Updates
 
-The app checks the [release page](https://github.com/RND332/sharkord-desktop/releases) shortly after
+The app checks the [release page](https://github.com/dodecagon-mesh/sharkord-desktop/releases) shortly after
 startup and every time you pick **Server → Check for updates…**:
 
 - **Linux cameras can die when a second instance hands off**: the AppImage runtime extracts into one

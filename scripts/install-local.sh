@@ -13,7 +13,7 @@ image="$opt/Sharkord.AppImage"
 launcher_template="$repo/scripts/sharkord-desktop-launcher.sh"
 
 asset_url() {
-  curl -fsSL https://api.github.com/repos/RND332/sharkord-desktop/releases/latest |
+  curl -fsSL https://api.github.com/repos/dodecagon-mesh/sharkord-desktop/releases/latest |
     grep -o 'https://[^"]*linux-x86_64.AppImage' | head -1
 }
 

@@ -10,9 +10,9 @@ export type UpdaterHooks = {
   beforeInstall: () => void;
 };
 
-const githubFeed = (): { provider: 'github'; owner: 'RND332'; repo: 'sharkord-desktop' } => ({
+const githubFeed = (): { provider: 'github'; owner: 'dodecagon-mesh'; repo: 'sharkord-desktop' } => ({
   provider: 'github',
-  owner: 'RND332',
+  owner: 'dodecagon-mesh',
   repo: 'sharkord-desktop'
 });
 
