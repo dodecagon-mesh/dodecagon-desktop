@@ -20,10 +20,12 @@ application shares carry only that application's process tree. Viewers never hea
 | **Windows** | Native process-loopback capture: screen shares exclude Dodecagon's process tree; window shares include only the selected application's process tree. Availability is determined by native activation, not a Windows-version gate. Windows audio measurements are still required; a successful build alone does not prove isolation. |
 | macOS | Wrapper only, untested. No own capture: the share carries whatever the platform gives `getDisplayMedia`, after the same proof. |
 
-- **Linux + AppImage**: camera can disappear (`NotFoundError: Requested device not found`) after a
-  second-instance handoff; fixed by the launcher extracting each launch into its own directory.
-  Install with `scripts/install-local.sh` to refresh the launcher — an AppImage update alone does
-  not replace it.
+- **Linux + AppImage**: the client runs from an unpacked copy of the image. A mounted AppImage can
+  lose the camera (`NotFoundError: Requested device not found`) after a second-instance handoff, and
+  its runtime can unmount the image while the client is still running, which kills the client with
+  `SIGBUS`. The unpacked copy has neither problem. The copy is refreshed whenever the image
+  changes. Install with `scripts/install-local.sh` to refresh the launcher — an AppImage update
+  alone does not replace it.
 Builds for all three platforms are produced by CI.
 
 ## Install
@@ -153,7 +155,9 @@ producing a Windows client without native audio capture.
 
 `scripts/install-local.sh` installs the app for the current user without root: it takes the Linux
 AppImage from the latest GitHub release into `~/.local/opt`, puts `dodecagon-desktop` on `PATH` and
-adds icon + desktop entry. `DODECAGON_LOCAL_BUILD=1` builds from the checkout instead of downloading.
+adds icon + desktop entry. The client runs from an unpacked copy of the image in `~/.local/opt`,
+and that copy is refreshed when the image changes. `DODECAGON_LOCAL_BUILD=1` builds from the
+checkout instead of downloading.
 Arch users can also `sudo pacman -U` the `.pacman` from Releases.
 
 ### Updates
@@ -161,12 +165,12 @@ Arch users can also `sudo pacman -U` the `.pacman` from Releases.
 The app checks the [release page](https://github.com/dodecagon-mesh/dodecagon-desktop/releases) shortly after
 startup and every time you pick **Server → Check for updates…**:
 
-- **Linux cameras can die when a second instance hands off**: the AppImage runtime extracts into one
-  content-hashed directory shared by every launch and deletes it when that launch exits, so a
-  second-instance handoff deleted the helpers a running client was using (e.g. the webcam). The
-  launcher now extracts each launch into its own directory and cleans it up on exit. Existing
-  installs must refresh the launcher (`scripts/install-local.sh`) — an AppImage update alone
-  does not replace the launcher.
+- **Linux clients could die with `SIGBUS`**: an AppImage keeps its content in a FUSE mount, and the
+  runtime that owns that mount can unmount it while the client is still running. The helper
+  processes of that client then have no code left to run and die with `SIGBUS`. The launcher now
+  starts an unpacked copy of the image, so there is no mount to lose. Existing installs must
+  refresh the launcher (`scripts/install-local.sh`) — an AppImage update alone does not replace the
+  launcher.
 
 - **Windows installer (NSIS)** and **Linux AppImage** replace themselves in place; a downloaded update
   asks for a restart and is also applied on the next quit.
@@ -221,8 +225,8 @@ link planner (mono fan-out, own-process exclusion, idempotency, links forgotten 
 disappears), the PCM framing (byte-exact carry, per-channel RMS, Goertzel selectivity), patch
 behaviour (passthrough, merge, fallback, backpressure, release), the server configuration (URL
 normalisation, exact-origin permission matching, hostile configs, storage round-trip), recorder
-restart/terminal-failure cleanup, picker request ownership and stale-refresh isolation, and the
-platform mode.
+restart/terminal-failure cleanup, picker request ownership and stale-refresh isolation, the
+platform mode, and the cleanup of helper processes left behind by an instance that was killed.
 
 Picker lifecycle regressions cover newly opened, renamed and closed windows, stale refreshes after
 cancellation, overlapping requests, failed picker-page loads, subframe source access, and stale choices
