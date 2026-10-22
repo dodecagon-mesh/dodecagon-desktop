@@ -565,7 +565,7 @@ describe('display-media patch fallbacks', () => {
   it('marks the patched function so the main process can verify it landed', async () => {
     const env = setup();
     expect(
-      (env.mediaDevices.getDisplayMedia as unknown as { __sharkordDesktop?: boolean }).__sharkordDesktop
+      (env.mediaDevices.getDisplayMedia as unknown as { __dodecagonDesktop?: boolean }).__dodecagonDesktop
     ).toBe(true);
   });
 });

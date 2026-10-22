@@ -6,7 +6,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
     />
-    <title>Sharkord Desktop</title>
+    <title>Dodecagon</title>
     <style>
       :root {
         color-scheme: dark;
@@ -75,13 +75,13 @@
   </head>
   <body>
     <main>
-      <h1>Sharkord Desktop</h1>
+      <h1>Dodecagon</h1>
       <p>Which server should this client open?</p>
       <form id="form">
         <input
           id="url"
           type="text"
-          placeholder="https://sharkord.example.com"
+          placeholder="https://dodecagon.example.com"
           autocomplete="off"
           aria-label="Server address"
           aria-describedby="error"
@@ -100,7 +100,7 @@
       const error = document.getElementById('error');
       error.textContent = new URLSearchParams(window.location.search).get('error') ?? '';
 
-      const bridge = window.sharkordDesktop;
+      const bridge = window.dodecagonDesktop;
       if (!bridge) {
         error.textContent = 'Preload bridge missing — this window was opened incorrectly.';
         form.hidden = true;

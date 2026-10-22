@@ -491,7 +491,7 @@ export class PortalSelectionObserver {
     try {
       child = spawn(helperPath, [
         '--pid', String(process.pid),
-        '--app-id', this.options.appId ?? 'sharkord-desktop',
+        '--app-id', this.options.appId ?? 'dodecagon-desktop',
         '--backend-name', 'org.freedesktop.impl.portal.desktop.hyprland'
       ], { stdio: ['ignore', 'pipe', 'pipe'] });
     } catch {
@@ -537,7 +537,7 @@ export class PortalSelectionObserver {
       portalOwner,
       backendOwner,
       backendName: 'org.freedesktop.impl.portal.desktop.hyprland',
-      appId: this.options.appId ?? 'sharkord-desktop'
+      appId: this.options.appId ?? 'dodecagon-desktop'
     };
     this.owners = owners;
     this.tracker = new PortalSelectionTracker({

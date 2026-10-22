@@ -3,17 +3,17 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const { createServer } = require('node:http');
-const root = process.env.SHARKORD_AUDIO_FIXTURE_DIR;
+const root = process.env.DODECAGON_AUDIO_FIXTURE_DIR;
 if (!root || process.env.PULSE_SERVER !== `unix:${root}/native`) throw new Error('Private audio server required');
 app.setPath('userData', join(root, 'profile'));
 app.setPath('appData', join(root, 'appdata'));
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
-const mode = process.env.SHARKORD_AUDIO_PROBE_MODE || 'automatic';
+const mode = process.env.DODECAGON_AUDIO_PROBE_MODE || 'automatic';
 if (!['automatic', 'baseline'].includes(mode)) throw new Error('Expected automatic or baseline mode');
-const preferences = process.env.SHARKORD_AUDIO_PROBE_CASE === 'preferences';
-const fixtureStreams = process.env.SHARKORD_AUDIO_PROBE_FAULT === 'missing-stream' ? 1 : 2;
-const candidate = process.env.SHARKORD_AUDIO_CANDIDATE || join(__dirname, '../..');
+const preferences = process.env.DODECAGON_AUDIO_PROBE_CASE === 'preferences';
+const fixtureStreams = process.env.DODECAGON_AUDIO_PROBE_FAULT === 'missing-stream' ? 1 : 2;
+const candidate = process.env.DODECAGON_AUDIO_CANDIDATE || join(__dirname, '../..');
 if (mode === 'automatic') {
   ipcMain.handle('app:info', () => ({ version: 'audio-regression-fixture', platform: process.platform }));
   ipcMain.handle('patch:source', () => readFileSync(join(candidate, 'dist/patch.js'), 'utf8'));
@@ -40,10 +40,10 @@ app.whenReady().then(async () => {
   await window.loadURL(`http://127.0.0.1:${server.address().port}`);
   if (mode === 'automatic') {
     for (let i = 0; i < 30; i++) {
-      if (await window.webContents.executeJavaScript('!!document.querySelector("[data-sharkord-desktop-version]")')) break;
+      if (await window.webContents.executeJavaScript('!!document.querySelector("[data-dodecagon-desktop-version]")')) break;
       await sleep(100);
     }
-    if (!await window.webContents.executeJavaScript('!!document.querySelector("[data-sharkord-desktop-version]")')) throw new Error('Production preload/patch not ready');
+    if (!await window.webContents.executeJavaScript('!!document.querySelector("[data-dodecagon-desktop-version]")')) throw new Error('Production preload/patch not ready');
   }
   await window.webContents.executeJavaScript(`(async () => {
     const send = new RTCPeerConnection();

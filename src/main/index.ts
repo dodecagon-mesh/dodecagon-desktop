@@ -25,6 +25,7 @@ import { removeLegacyRouting } from './legacy';
 import { bindPortalCaptureTarget, resolveLinuxAudioTarget } from './linux-audio';
 import { displayCapturerRequest, pickDisplaySource, registerPickerIpc } from './picker';
 import {
+  carryOverLegacySettings,
   isServerOrigin,
   normalizeServerUrl,
   readSentryDsn,
@@ -43,6 +44,12 @@ import { startWindowsVoiceShortcuts } from './windows-voice-shortcuts';
 initializeLogging();
 
 const settingsPath = join(app.getPath('userData'), 'config.json');
+const legacySettingsPath = join(app.getPath('appData'), 'sharkord-desktop', 'config.json');
+
+if (carryOverLegacySettings(settingsPath, legacySettingsPath)) {
+  log(`carried the stored server over from ${legacySettingsPath}`);
+}
+
 const dsnArgument = process.argv
   .find((argument) => argument.startsWith('--sentry-dsn='))
   ?.slice('--sentry-dsn='.length);
@@ -188,7 +195,7 @@ const installPermissionHandlers = (origin: () => string): void => {
     }
     const wayland = process.platform === 'linux' &&
       (process.env.XDG_SESSION_TYPE === 'wayland' || Boolean(process.env.WAYLAND_DISPLAY));
-    const wantsSystemPicker = process.env.SHARKORD_PICKER === 'system' || (wayland && process.env.SHARKORD_PICKER !== 'inapp');
+    const wantsSystemPicker = process.env.DODECAGON_PICKER === 'system' || (wayland && process.env.DODECAGON_PICKER !== 'inapp');
 
     try {
       if (linuxAudio && wayland && wantsSystemPicker) {
@@ -584,8 +591,8 @@ const bootstrap = async (): Promise<void> => {
         log('renderer recovery paused: three crashes within one minute; reload manually to retry');
         if (Notification.isSupported()) {
           new Notification({
-            title: 'Sharkord keeps crashing',
-            body: 'Automatic recovery was paused. Open Sharkord and reload the client to retry.'
+            title: 'Dodecagon keeps crashing',
+            body: 'Automatic recovery was paused. Open Dodecagon and reload the client to retry.'
           }).show();
         }
         return;
@@ -607,7 +614,7 @@ const bootstrap = async (): Promise<void> => {
         mentionedTray = true;
         log('telling the user the app is still in the tray');
         new Notification({
-          title: 'Sharkord is still running',
+          title: 'Dodecagon is still running',
           body: 'Closing the window keeps it in the tray. Quit from the tray menu.'
         }).show();
       }
@@ -627,7 +634,7 @@ const bootstrap = async (): Promise<void> => {
     const window = new BrowserWindow({
       width: 1280,
       height: 840,
-      title: 'Sharkord',
+      title: 'Dodecagon',
       autoHideMenuBar: true,
       show: !config.selftest,
       backgroundColor: '#0b0d12',
@@ -639,7 +646,7 @@ const bootstrap = async (): Promise<void> => {
         autoplayPolicy: 'no-user-gesture-required',
         backgroundThrottling: false,
         // The page reads this to know whether share audio comes from us or the browser.
-        additionalArguments: [`--sharkord-capture=${captureKind}`]
+        additionalArguments: [`--dodecagon-capture=${captureKind}`]
       }
     });
     mainWindow = window;
@@ -688,10 +695,10 @@ const bootstrap = async (): Promise<void> => {
   try {
     const iconPath = join(__dirname, 'icon.png');
     tray = new Tray(nativeImage.createFromPath(iconPath));
-    tray.setToolTip('Sharkord Desktop');
+    tray.setToolTip('Dodecagon');
     tray.setContextMenu(
       Menu.buildFromTemplate([
-        { label: 'Show Sharkord', click: showWindow },
+        { label: 'Show Dodecagon', click: showWindow },
         {
           label: 'Change server…',
           click: () => {
@@ -779,7 +786,7 @@ const bootstrap = async (): Promise<void> => {
                 const { response } = await dialog.showMessageBox({
                   type: 'info',
                   title: 'Diagnostics',
-                  message: 'Sharkord Desktop',
+                  message: 'Dodecagon',
                   detail: `${describeEnvironment()}\n\n${readLogTail(40)}`,
                   buttons: ['Copy to clipboard', 'Close'],
                   defaultId: 1,
@@ -825,7 +832,7 @@ const bootstrap = async (): Promise<void> => {
     const cancelled = (): boolean => shuttingDown || generation !== clientLoadGeneration ||
       target.isDestroyed() || target !== mainWindow || target.webContents.isCrashed();
     try {
-      if (!normalized) throw new Error('Enter an address such as https://sharkord.example.com');
+      if (!normalized) throw new Error('Enter an address such as https://dodecagon.example.com');
       allowedOrigin = new URL(normalized).origin;
       await target.loadURL(normalized);
     } catch (error) {
@@ -845,11 +852,11 @@ const bootstrap = async (): Promise<void> => {
         if (cancelled()) return false;
         const readiness = (await target.webContents.executeJavaScript(
           `({
-            bridge: typeof window.sharkordDesktop,
-            platform: window.sharkordDesktop?.platform ?? 'missing',
-            capture: window.sharkordDesktop?.captureSource ?? 'missing',
-            badge: document.querySelector('[data-sharkord-desktop-version]')?.textContent ?? 'missing',
-            patched: navigator.mediaDevices?.getDisplayMedia?.__sharkordDesktop === true,
+            bridge: typeof window.dodecagonDesktop,
+            platform: window.dodecagonDesktop?.platform ?? 'missing',
+            capture: window.dodecagonDesktop?.captureSource ?? 'missing',
+            badge: document.querySelector('[data-dodecagon-desktop-version]')?.textContent ?? 'missing',
+            patched: navigator.mediaDevices?.getDisplayMedia?.__dodecagonDesktop === true,
             source: String(navigator.mediaDevices?.getDisplayMedia ?? '').slice(0, 120),
             generator: typeof MediaStreamTrackGenerator === 'function'
           })`,
@@ -911,13 +918,13 @@ const bootstrap = async (): Promise<void> => {
       log(
         "WARNING: the system-audio capture provably carried this app's own playback (16 kHz probe, " +
           `${details.echoTest}), so the share was left silent rather than sending the voice channel back to the channel. ` +
-          'Playing Sharkord through a different device than the one being shared — client Settings → Devices → playback device — ' +
+          'Playing Dodecagon through a different device than the one being shared — client Settings → Devices → playback device — ' +
           'makes system audio usable again.'
       );
       if (Notification.isSupported()) {
         new Notification({
           title: 'Sharing video only',
-          body: 'Your viewers would have heard themselves, so this share has no sound. Play Sharkord through a different device (Settings → Devices → playback device) to share with audio.'
+          body: 'Your viewers would have heard themselves, so this share has no sound. Play Dodecagon through a different device (Settings → Devices → playback device) to share with audio.'
         }).show();
       }
     }
@@ -941,7 +948,7 @@ const bootstrap = async (): Promise<void> => {
   ipcMain.handle('server:submit', async (_event, raw: unknown) => {
     const normalized = normalizeServerUrl(typeof raw === 'string' ? raw : '');
     if (!normalized) {
-      return { ok: false, error: 'Enter an address such as https://sharkord.example.com' };
+      return { ok: false, error: 'Enter an address such as https://dodecagon.example.com' };
     }
     try {
       if (!await loadClient(normalized)) return { ok: false };
@@ -953,7 +960,7 @@ const bootstrap = async (): Promise<void> => {
   });
 
   if (config.selftest) {
-    const pagePath = join(tmpdir(), 'sharkord-desktop-selftest.html');
+    const pagePath = join(tmpdir(), 'dodecagon-desktop-selftest.html');
     await writeFile(pagePath, '<!doctype html><meta charset="utf-8"><title>selftest</title><body>selftest</body>');
     await window.loadFile(pagePath);
     const result = await runSelftest({ config, tap, window, log });
@@ -968,11 +975,11 @@ const bootstrap = async (): Promise<void> => {
     }
   });
 
-  if (process.env.SHARKORD_DEBUG_QUIT_AFTER) {
-    setTimeout(() => void shutdown(0), Number(process.env.SHARKORD_DEBUG_QUIT_AFTER) * 1000);
+  if (process.env.DODECAGON_DEBUG_QUIT_AFTER) {
+    setTimeout(() => void shutdown(0), Number(process.env.DODECAGON_DEBUG_QUIT_AFTER) * 1000);
   }
-  if (process.env.SHARKORD_DEBUG_APP_QUIT_AFTER) {
-    setTimeout(() => app.quit(), Number(process.env.SHARKORD_DEBUG_APP_QUIT_AFTER) * 1000);
+  if (process.env.DODECAGON_DEBUG_APP_QUIT_AFTER) {
+    setTimeout(() => app.quit(), Number(process.env.DODECAGON_DEBUG_APP_QUIT_AFTER) * 1000);
   }
 
   const startUrl = config.url ?? readServerUrl(serverConfigPath);

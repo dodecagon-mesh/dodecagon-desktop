@@ -28,7 +28,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   vi.spyOn(console, 'log').mockImplementation(() => {});
-  state.directory = mkdtempSync(join(tmpdir(), 'sharkord-rendering-test-'));
+  state.directory = mkdtempSync(join(tmpdir(), 'dodecagon-rendering-test-'));
   Object.defineProperty(process, 'resourcesPath', { configurable: true, value: state.directory });
   listeners = process.listeners('uncaughtExceptionMonitor');
 });

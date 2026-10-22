@@ -3,7 +3,7 @@ const fs=require('fs'),path=require('path');
 const mode=process.argv.find(x=>x.startsWith('--mode='))?.split('=')[1]||'normal';
 const bounded=!process.argv.includes('--baseline');
 const root=path.resolve(__dirname,'..');
-const output=fs.mkdtempSync(path.join(require('os').tmpdir(),'sharkord-pcm-memory-'));
+const output=fs.mkdtempSync(path.join(require('os').tmpdir(),'dodecagon-pcm-memory-'));
 require('esbuild').buildSync({entryPoints:[path.join(root,'src/main/pcm-delivery.ts')],outfile:path.join(output,'delivery.cjs'),bundle:true,platform:'node',format:'cjs'});
 const {PcmDelivery}=require(path.join(output,'delivery.cjs'));
 const delivery=new PcmDelivery();delivery.start(1);
@@ -23,10 +23,10 @@ window.AudioData=function(init){const a=new AD(init);stats.created++;if(init.tim
 window.MediaStreamTrackGenerator=function(init){const g=new G(init),get=g.writable.getWriter.bind(g.writable);g.writable.getWriter=()=>{const w=get(),write=w.write.bind(w);w.write=a=>{stats.pending++;stats.maxPending=Math.max(stats.maxPending,stats.pending);stats.writes++;return write(a).finally(()=>stats.pending--)};return w};return g};
 const canvas=document.createElement('canvas');canvas.width=16;canvas.height=16;window.video=canvas.captureStream(1).getVideoTracks()[0];
 navigator.mediaDevices.getDisplayMedia=async()=>new MediaStream([video]);
-const bridge=window.sharkordDesktop;
-window.sharkordDesktopForProbe={...bridge,onPcm:cb=>bridge.onPcm((chunk,firstSample)=>{stats.received++;cb(chunk,firstSample)})};
+const bridge=window.dodecagonDesktop;
+window.dodecagonDesktopForProbe={...bridge,onPcm:cb=>bridge.onPcm((chunk,firstSample)=>{stats.received++;cb(chunk,firstSample)})};
 `;
-const injected=setup+patch.replace('var bridge = globals.sharkordDesktop;','var bridge = window.sharkordDesktopForProbe;')+`
+const injected=setup+patch.replace('var bridge = globals.dodecagonDesktop;','var bridge = window.dodecagonDesktopForProbe;')+`
 (async()=>{window.shared=await navigator.mediaDevices.getDisplayMedia({audio:true});probe.ready()})().catch(e=>console.error(e.stack));
 `;
 ipcMain.handle('patch:source',()=>injected);
@@ -46,5 +46,5 @@ async function run(){started=Date.now();await sample('start');
  sampler=setInterval(()=>{samples.push({label:'native',elapsed:Date.now()-started,sent,acked,dropped,outstanding:sent-acked,memory:memory()});console.log(JSON.stringify(samples.at(-1)));},1000);
  setTimeout(async()=>{clearInterval(timer);clearInterval(sampler);await sample('end');await win.webContents.executeJavaScript('shared.getTracks().forEach(t=>t.stop());globalThis.gc?.();true');await new Promise(r=>setTimeout(r,1500));await sample('stopped');fs.writeFileSync(path.join(output,mode+(bounded?'-bounded':'')+'.json'),JSON.stringify({mode,bounded,duration,electron:process.versions.electron,samples},null,2));const maxOutstanding=Math.max(...samples.map(s=>s.outstanding));const renderer=samples.find(s=>s.label==='end').renderer;console.log(JSON.stringify({result:maxOutstanding>12?'FAIL':'PASS',maxOutstanding,dropped,renderer,output}));app.exit(maxOutstanding>12?1:0)},duration*1000);
 }
-app.whenReady().then(async()=>{win=new BrowserWindow({show:false,webPreferences:{preload:path.join(output,'preload.cjs'),additionalArguments:['--sharkord-capture=pipewire'],backgroundThrottling:false}});win.webContents.on('console-message',(event,...args)=>console.log('renderer',event.message,...args));win.webContents.on('render-process-gone',(_,d)=>{console.log(d);app.exit(2)});fs.writeFileSync(path.join(output,'fixture.html'),'<title>PCM memory regression fixture</title>');await win.loadFile(path.join(output,'fixture.html'));});
+app.whenReady().then(async()=>{win=new BrowserWindow({show:false,webPreferences:{preload:path.join(output,'preload.cjs'),additionalArguments:['--dodecagon-capture=pipewire'],backgroundThrottling:false}});win.webContents.on('console-message',(event,...args)=>console.log('renderer',event.message,...args));win.webContents.on('render-process-gone',(_,d)=>{console.log(d);app.exit(2)});fs.writeFileSync(path.join(output,'fixture.html'),'<title>PCM memory regression fixture</title>');await win.loadFile(path.join(output,'fixture.html'));});
 setTimeout(()=>{console.error('watchdog');app.exit(3)},(duration+25)*1000);

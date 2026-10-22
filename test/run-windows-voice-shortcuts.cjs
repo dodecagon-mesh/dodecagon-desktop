@@ -9,7 +9,7 @@ const { build } = require('esbuild');
 const asar = require('@electron/asar');
 if (process.platform !== 'win32') throw new Error('Run the native shortcut test on Windows');
 const repo = path.resolve(__dirname, '..');
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'sharkord-windows-shortcuts-'));
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'dodecagon-windows-shortcuts-'));
 const resultDir = path.join(repo, 'test-results');
 fs.mkdirSync(resultDir, { recursive: true });
 const packages = fs.readdirSync(path.join(repo, 'release')).map(name => path.join(repo, 'release', name))
@@ -32,12 +32,12 @@ const run = (baseline, main) => {
   fs.mkdirSync(path.join(folder, 'profile'), { recursive: true });
   fs.mkdirSync(path.join(folder, 'app-data'), { recursive: true });
   fs.copyFileSync(helper, path.join(folder, 'native', 'out', 'win-voice-shortcuts.exe'));
-  fs.writeFileSync(path.join(folder, 'package.json'), JSON.stringify({ name: 'sharkord-shortcuts-fixture', version: packagedVersion, main: 'main.cjs' }));
+  fs.writeFileSync(path.join(folder, 'package.json'), JSON.stringify({ name: 'dodecagon-shortcuts-fixture', version: packagedVersion, main: 'main.cjs' }));
   fs.writeFileSync(path.join(folder, 'main.cjs'), 'require(' + JSON.stringify(fixtureMain) + ');\n');
   const output = path.join(folder, 'result.json');
   const child = spawnSync(electron, [folder], {
     cwd: repo,
-    env: { ...process.env, SHARKORD_SHORTCUT_MAIN: main, SHARKORD_SHORTCUT_RESULT: output, SHARKORD_SHORTCUT_BASELINE: baseline ? '1' : '0' },
+    env: { ...process.env, DODECAGON_SHORTCUT_MAIN: main, DODECAGON_SHORTCUT_RESULT: output, DODECAGON_SHORTCUT_BASELINE: baseline ? '1' : '0' },
     encoding: 'utf8', timeout: 75000, windowsHide: true
   });
   if (child.error) throw child.error;

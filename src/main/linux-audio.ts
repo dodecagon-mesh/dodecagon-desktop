@@ -129,7 +129,7 @@ export const bindPortalCaptureTarget = async (
       return null;
     }
     if (options.isActive && !options.isActive()) return null;
-    const graph = parseGraph(graphJson, options.tapName ?? 'sharkord_capture');
+    const graph = parseGraph(graphJson, options.tapName ?? 'dodecagon_capture');
     const matches = graph.videoCaptures.filter((capture) => captureProcess(capture.processId) &&
       capture.targetSerials.length === 1 && serials.has(capture.targetSerials[0]!));
     if (matches.length === 1) {

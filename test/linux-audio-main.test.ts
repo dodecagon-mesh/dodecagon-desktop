@@ -18,8 +18,8 @@ const world = vi.hoisted(() => ({
 vi.mock('../src/main/logger', () => ({ initializeLogging() {}, log: world.log, describeEnvironment() {}, readLogTail() {}, attachRendererConsoleLogging() {} }));
 vi.mock('../src/main/config', () => ({ loadConfig: () => ({ mode: 'capture' }) }));
 vi.mock('../src/main/updater', () => ({ setupAutoUpdates() {}, installPendingUpdateSilently() {}, checkForUpdatesNow() {} }));
-vi.mock('../src/main/server-config', () => ({ readServerUrl: () => 'https://test.invalid', readSentryDsn: () => null, saveSentryDsn() {}, normalizeServerUrl: (s: string) => s, isServerOrigin: () => true, saveServerUrl() {} }));
-vi.mock('../src/main/tap', () => ({ TapCapture: class { start = world.start; stop = world.stop; tapNode = 'sharkord_capture'; onData() {} } }));
+vi.mock('../src/main/server-config', () => ({ readServerUrl: () => 'https://test.invalid', readSentryDsn: () => null, saveSentryDsn() {}, normalizeServerUrl: (s: string) => s, isServerOrigin: () => true, saveServerUrl() {}, carryOverLegacySettings: () => false }));
+vi.mock('../src/main/tap', () => ({ TapCapture: class { start = world.start; stop = world.stop; tapNode = 'dodecagon_capture'; onData() {} } }));
 vi.mock('../src/main/linux-audio', () => ({
   resolveLinuxAudioTarget: world.resolveTarget,
   bindPortalCaptureTarget: world.bindTarget
@@ -54,7 +54,7 @@ vi.mock('electron', () => ({
     requestSingleInstanceLock: () => true, whenReady: () => Promise.resolve(),
     getGPUInfo: async () => ({}), getGPUFeatureStatus: () => ({}), configureHostResolver() {},
     getPath: () => '/home/rnd332/.hermes/cache/scratch', exit() {}, quit() {},
-    getAppPath: () => '/home/rnd332/.hermes/cache/scratch', getName: () => 'Sharkord',
+    getAppPath: () => '/home/rnd332/.hermes/cache/scratch', getName: () => 'Dodecagon',
     getVersion: () => '0.0.0-test', getLocale: () => 'en-US', isPackaged: true,
     setPath() {}, disableHardwareAcceleration() {},
     commandLine: { appendSwitch() {}, hasSwitch: () => false }

@@ -68,7 +68,7 @@ export type PatchEnvironment = {
 };
 
 export const installGetDisplayMediaPatch = (env: PatchEnvironment): void => {
-  const log = env.log ?? ((...args: unknown[]) => console.warn('[sharkord-desktop]', ...args));
+  const log = env.log ?? ((...args: unknown[]) => console.warn('[dodecagon-desktop]', ...args));
   const setIntervalFn = env.setIntervalFn ?? setInterval;
   const clearIntervalFn = env.clearIntervalFn ?? clearInterval;
   const mediaDevices = env.mediaDevices;
@@ -277,7 +277,7 @@ export const installGetDisplayMediaPatch = (env: PatchEnvironment): void => {
     if (heard === false || (heard === null && forced)) {
       // Only an explicit opt-in lets audio through when the probe could not clear it; a capture we
       // measured our own playback in is never shared.
-      if (heard === null) log('including system audio although the echo probe was inconclusive (SHARKORD_WINDOWS_AUDIO=on)');
+      if (heard === null) log('including system audio although the echo probe was inconclusive (DODECAGON_WINDOWS_AUDIO=on)');
       void env.bridge.reportCaptureMode?.({ mode: 'system-audio', echoTest: heard === false ? 'clean' : 'unknown' });
       return stream;
     }
@@ -290,5 +290,5 @@ export const installGetDisplayMediaPatch = (env: PatchEnvironment): void => {
   };
 
   // The main process checks this to know the patch really landed, rather than reading source text.
-  Object.defineProperty(mediaDevices.getDisplayMedia, '__sharkordDesktop', { value: true });
+  Object.defineProperty(mediaDevices.getDisplayMedia, '__dodecagonDesktop', { value: true });
 };

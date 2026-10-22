@@ -12,20 +12,21 @@ describe('resolveMode', () => {
 describe('loadConfig', () => {
   it('prefers the CLI flag over the environment, and asks when neither is set', () => {
     expect(loadConfig(['--url=https://cli.test'], {}).url).toBe('https://cli.test');
-    expect(loadConfig([], { SHARKORD_URL: 'https://env.test' }).url).toBe('https://env.test');
+    expect(loadConfig([], { DODECAGON_URL: 'https://env.test' }).url).toBe('https://env.test');
     expect(loadConfig([], {}).url).toBeNull();
   });
 
   it('reads the tap name, debug path and legacy state path from the environment', () => {
     const config = loadConfig([], {
-      SHARKORD_TAP_NAME: 'probe_tap',
-      SHARKORD_DEBUG_PCM: '/tmp/capture.wav',
+      DODECAGON_TAP_NAME: 'probe_tap',
+      DODECAGON_DEBUG_PCM: '/tmp/capture.wav',
       XDG_RUNTIME_DIR: '/run/user/1234'
     });
 
     expect(config).toMatchObject({
       tapName: 'probe_tap',
       debugPcm: '/tmp/capture.wav',
+      // the state file of the first design keeps its old name, the cleanup looks for it there
       legacyStatePath: '/run/user/1234/sharkord-desktop.json',
       mode: 'capture'
     });
@@ -34,7 +35,7 @@ describe('loadConfig', () => {
   it('reports client errors only when a sentry dsn is configured', () => {
     expect(loadConfig([], {}).sentryDsn).toBeNull();
     expect(
-      loadConfig([], { SHARKORD_SENTRY_DSN: 'https://key@errors.example.com/3' })
+      loadConfig([], { DODECAGON_SENTRY_DSN: 'https://key@errors.example.com/3' })
         .sentryDsn
     ).toBe('https://key@errors.example.com/3');
   });
@@ -46,7 +47,7 @@ describe('loadConfig', () => {
     expect(
       loadConfig(
         [],
-        { SHARKORD_SENTRY_DSN: 'https://env@errors.example.com/3' },
+        { DODECAGON_SENTRY_DSN: 'https://env@errors.example.com/3' },
         'linux',
         'https://saved@errors.example.com/3'
       ).sentryDsn

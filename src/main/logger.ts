@@ -36,7 +36,7 @@ let directory: string | null = null;
 let initialized = false;
 
 /** Independent of --user-data-dir: deleting a temporary profile must not delete the evidence. */
-export const getLogsDirectory = (): string => join(app.getPath('appData'), 'sharkord-desktop', 'logs');
+export const getLogsDirectory = (): string => join(app.getPath('appData'), 'dodecagon-desktop', 'logs');
 
 const sessionDirectory = (): string => {
   if (directory) return directory;
@@ -112,7 +112,7 @@ export const log = (...parts: unknown[]): void => {
       depth: 5, getters: false, customInspect: false, maxArrayLength: 50, maxStringLength: 8192, colors: false
     })).join(' ');
     const line = `${stamp()}${message.slice(0, 32768)}\n`;
-    try { console.log('[sharkord-desktop]', line.trimEnd()); } catch { /* Closed stdout must not lose the file log. */ }
+    try { console.log('[dodecagon-desktop]', line.trimEnd()); } catch { /* Closed stdout must not lose the file log. */ }
     appendBounded(logPath(), line, MAX_BYTES, KEEP_BYTES);
   } catch {
     // Logging must never turn a recoverable failure into a crash.

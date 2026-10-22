@@ -55,7 +55,7 @@ const getDefaultSink = (): Promise<string> => {
 const hasLegacyModules = (): Promise<boolean> => {
   const { promise, resolve } = Promise.withResolvers<boolean>();
   execFile('pactl', ['list', 'modules'], (error, stdout) => {
-    resolve(!error && stdout.includes('sink_name=sharkord_capture'));
+    resolve(!error && stdout.includes('sink_name=dodecagon_capture'));
   });
   return promise;
 };
@@ -200,7 +200,7 @@ export const runSelftest = async (options: SelftestOptions): Promise<{ pass: boo
   tap.start();
   const control = recordMonitor(`${defaultSink}.monitor`, (chunk) => controlSamples.push(toMono(chunk)));
 
-  const tonePath = join(tmpdir(), 'sharkord-desktop-selftest-tone.wav');
+  const tonePath = join(tmpdir(), 'dodecagon-desktop-selftest-tone.wav');
   await toneWav(tonePath, PC_TONE_HZ, TONE_SECONDS);
 
   await sleep(WARMUP_MS);
@@ -272,14 +272,14 @@ export const runSelftest = async (options: SelftestOptions): Promise<{ pass: boo
   // legitimately captured — that makes the tone-based leak check meaningless while it runs.
   const otherInstances = tappedPids.filter((pid) => {
     try {
-      return readFileSync(`/proc/${pid}/cmdline`, 'utf8').includes('sharkord');
+      return readFileSync(`/proc/${pid}/cmdline`, 'utf8').includes('dodecagon');
     } catch {
       return false;
     }
   });
   if (otherInstances.length > 0) {
     log(
-      `note: another Sharkord instance (pids: ${otherInstances.join(', ')}) is playing audio; ` +
+      `note: another Dodecagon instance (pids: ${otherInstances.join(', ')}) is playing audio; ` +
         'its playback is captured on purpose and the tone-based leak check is skipped'
     );
   }

@@ -623,7 +623,7 @@ static bool parse_positive_pid(const char *value, uint32_t *pid) {
 
 static int parse_args(int argc, char **argv, struct collector *collector) {
   const char *pid = NULL;
-  const char *app_id = "sharkord-desktop";
+  const char *app_id = "dodecagon-desktop";
   const char *backend_name = BACKEND_NAME;
   for (int index = 1; index < argc; ++index) {
     if (strcmp(argv[index], "--pid") == 0 && index + 1 < argc) pid = argv[++index];

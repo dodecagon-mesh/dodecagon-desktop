@@ -15,10 +15,10 @@ ROOT = HERE.parent.parent
 mode = sys.argv[1] if len(sys.argv) > 1 else 'application'
 if mode not in ('application', 'screen'):
     raise RuntimeError('Expected application or screen')
-runtime = Path(tempfile.mkdtemp(prefix='sharkord-share-audio-', dir=os.environ.get('TMPDIR')))
+runtime = Path(tempfile.mkdtemp(prefix='dodecagon-share-audio-', dir=os.environ.get('TMPDIR')))
 env = {**os.environ, 'PIPEWIRE_CONFIG_DIR': str(runtime), 'PIPEWIRE_RUNTIME_DIR': str(runtime), 'PIPEWIRE_REMOTE': str(runtime / 'pipewire-0'),
        'PULSE_RUNTIME_PATH': str(runtime), 'PULSE_SERVER': f'unix:{runtime}/native',
-       'PULSE_SINK': 'fixture_sink', 'SHARKORD_SHARE_FIXTURE': str(runtime), 'SHARKORD_SHARE_MODE': mode}
+       'PULSE_SINK': 'fixture_sink', 'DODECAGON_SHARE_FIXTURE': str(runtime), 'DODECAGON_SHARE_MODE': mode}
 children = []
 logs = []
 try:
@@ -58,7 +58,7 @@ stream.properties = { node.autoconnect = false adapter.auto-port-config = { mode
     selected = subprocess.Popen(['paplay', '--device=fixture_sink', str(runtime / '440.wav')], env=env)
     unrelated = subprocess.Popen(['paplay', '--device=fixture_sink', str(runtime / '880.wav')], env=env)
     children += [selected, unrelated]
-    env['SHARKORD_SHARE_SELECTED_PID'] = str(selected.pid)
+    env['DODECAGON_SHARE_SELECTED_PID'] = str(selected.pid)
     log = open(runtime / 'native.log', 'w')
     logs.append(log)
     electron = subprocess.Popen([str(ROOT / 'node_modules/electron/dist/electron'), str(HERE / 'probe.cjs')], env=env, stdout=log, stderr=subprocess.STDOUT)

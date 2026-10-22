@@ -54,8 +54,8 @@ const bridge = {
   /** The page picks its capture strategy from this. */
   platform: process.platform,
   /** 'pipewire' | 'windows' | 'none' — whether the app captures share audio itself (from main). */
-  captureSource: (process.argv.find((arg) => arg.startsWith('--sharkord-capture=')) ?? '--sharkord-capture=none').split('=')[1],
-  forceSystemAudio: process.env.SHARKORD_WINDOWS_AUDIO === 'on',
+  captureSource: (process.argv.find((arg) => arg.startsWith('--dodecagon-capture=')) ?? '--dodecagon-capture=none').split('=')[1],
+  forceSystemAudio: process.env.DODECAGON_WINDOWS_AUDIO === 'on',
   /** Version/platform for the badge the page shows in its corner. */
   appInfo: (): Promise<{ version: string; platform: string }> => ipcRenderer.invoke('app:info'),
   /** The page reports which capture strategy it installed; it lands in the log. */
@@ -124,14 +124,14 @@ const bridge = {
   }
 };
 
-contextBridge.exposeInMainWorld('sharkordDesktop', bridge);
-console.log('[sharkord-desktop] preload ready, bridge exposed');
+contextBridge.exposeInMainWorld('dodecagonDesktop', bridge);
+console.log('[dodecagon-desktop] preload ready, bridge exposed');
 
 void (async () => {
   try {
     const source = (await ipcRenderer.invoke('patch:source')) as string;
     await webFrame.executeJavaScript(source);
   } catch (error) {
-    console.error('[sharkord-desktop] failed to inject the display-media patch', error);
+    console.error('[dodecagon-desktop] failed to inject the display-media patch', error);
   }
 })();

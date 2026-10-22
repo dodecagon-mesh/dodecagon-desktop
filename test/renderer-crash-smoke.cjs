@@ -7,10 +7,10 @@ const { mkdtempSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const { createServer } = require('node:http');
-const profile = mkdtempSync(join(tmpdir(), 'sharkord-crash-smoke-'));
+const profile = mkdtempSync(join(tmpdir(), 'dodecagon-crash-smoke-'));
 app.setPath('userData', join(profile, 'profile'));
 app.setPath('appData', profile);
-process.env.SHARKORD_TAP_NAME = `sharkord_crash_smoke_${process.pid}`;
+process.env.DODECAGON_TAP_NAME = `dodecagon_crash_smoke_${process.pid}`;
 const server = createServer((_req, res) => {
   res.setHeader('Content-Type', 'text/html');
   res.end('<!doctype html><title>Crash regression fixture</title><body id="fixture">alive</body>');
@@ -75,7 +75,7 @@ app.on('web-contents-created', (_event, contents) => {
   if (readinessCrash) {
     const execute = contents.executeJavaScript.bind(contents);
     contents.executeJavaScript = (source, ...args) => {
-      if (!readinessInterrupted && source.includes('bridge: typeof window.sharkordDesktop')) {
+      if (!readinessInterrupted && source.includes('bridge: typeof window.dodecagonDesktop')) {
         readinessInterrupted = true;
         crashed = true;
         BrowserWindow.fromWebContents(contents).hide();
@@ -106,7 +106,7 @@ app.on('web-contents-created', (_event, contents) => {
         }
         const state = await contents.executeJavaScript(`(async () => ({
           form: !!document.getElementById('form'),
-          remembered: await window.sharkordDesktop.currentServer(),
+          remembered: await window.dodecagonDesktop.currentServer(),
           error: new URL(location.href).searchParams.get('error')
         }))()`);
         if (!state.form) throw new Error('recovered picker is not usable');
@@ -132,7 +132,7 @@ app.on('web-contents-created', (_event, contents) => {
             try {
               if (pickerMode === 'error') {
                 await new Promise(resolve => server.close(resolve));
-                await contents.executeJavaScript('void window.sharkordDesktop.submitServer(location.href)');
+                await contents.executeJavaScript('void window.dodecagonDesktop.submitServer(location.href)');
               } else {
                 const menu = pickerMode === 'tray' ? trayMenu : Menu.getApplicationMenu().items[0].submenu;
                 const change = menu?.items.find(item => item.label === 'Change server…');
@@ -157,7 +157,7 @@ app.on('web-contents-created', (_event, contents) => {
           if (contents.getURL() !== expectedPickerUrl) throw new Error('recovery left the active picker route');
           const usable = await contents.executeJavaScript(`(async () => ({
             form: !!document.getElementById('form'),
-            remembered: await window.sharkordDesktop.currentServer()
+            remembered: await window.dodecagonDesktop.currentServer()
           }))()`);
           if (!usable.form || !usable.remembered?.startsWith('http://127.0.0.1:')) {
             throw new Error('picker not usable or remembered server lost');
@@ -210,6 +210,6 @@ server.listen(0, '127.0.0.1', async () => {
   const url = `http://127.0.0.1:${server.address().port}`;
   if (interruptedPicker !== 'startup') process.argv.push(`--url=${url}`);
   if (interruptedPicker === 'error') await new Promise(resolve => server.close(resolve));
-  require(process.env.SHARKORD_SMOKE_MAIN || '../dist/main.js');
+  require(process.env.DODECAGON_SMOKE_MAIN || '../dist/main.js');
 });
 setTimeout(() => finish(1, 'FAIL: smoke test startup timed out'), 15000).unref();

@@ -52,7 +52,7 @@ const PW_DUMP = JSON.stringify([
     info: {
       props: {
         'media.class': 'Stream/Input/Audio',
-        'node.name': 'sharkord_capture',
+        'node.name': 'dodecagon_capture',
         'application.process.id': 999
       }
     }
@@ -146,14 +146,14 @@ describe('parseGraph', () => {
       'pipewire.sec.uid': process.getuid?.()
     });
     delete objects[0].info.props['application.process.id'];
-    const graph = parseGraph(JSON.stringify(objects), 'sharkord_capture', false, () => verified);
+    const graph = parseGraph(JSON.stringify(objects), 'dodecagon_capture', false, () => verified);
     expect(graph.streams[0]!.processId).toBeNull();
   });
 
   it('uses the native protocol PID when the application PID is missing', () => {
     const objects = JSON.parse(PW_DUMP);
     delete objects[0].info.props['application.process.id'];
-    const graph = parseGraph(JSON.stringify(objects), 'sharkord_capture');
+    const graph = parseGraph(JSON.stringify(objects), 'dodecagon_capture');
     expect(graph.streams[0]!.processId).toBe(27893);
   });
 
@@ -165,7 +165,7 @@ describe('parseGraph', () => {
       'pulse.server.type': 'unix',
       'pipewire.sec.uid': process.getuid?.()
     });
-    const graph = parseGraph(JSON.stringify(objects), 'sharkord_capture', false, (pid) => pid === 1349);
+    const graph = parseGraph(JSON.stringify(objects), 'dodecagon_capture', false, (pid) => pid === 1349);
     expect(graph.streams[0]!.processId).toBe(27893);
   });
 
@@ -180,7 +180,7 @@ describe('parseGraph', () => {
       'pipewire.sec.pid': 1349, 'client.api': 'pipewire-pulse',
       'pulse.server.type': 'unix', 'pipewire.sec.uid': process.getuid?.(), ...invalid
     });
-    const graph = parseGraph(JSON.stringify(objects), 'sharkord_capture', false, () => true);
+    const graph = parseGraph(JSON.stringify(objects), 'dodecagon_capture', false, () => true);
     expect(graph.streams[0]!.processId).toBeNull();
   });
 
@@ -190,7 +190,7 @@ describe('parseGraph', () => {
       'pipewire.sec.pid': 1349, 'client.api': 'pipewire-pulse',
       'pulse.server.type': 'unix', 'pipewire.sec.uid': process.getuid?.()
     });
-    const graph = parseGraph(JSON.stringify(objects), 'sharkord_capture', false, () => false);
+    const graph = parseGraph(JSON.stringify(objects), 'dodecagon_capture', false, () => false);
     expect(graph.streams[0]!.processId).toBeNull();
   });
 
@@ -202,7 +202,7 @@ describe('parseGraph', () => {
       { id: 221, type: 'PipeWire:Interface:Node', info: { props: {
         'media.class': 'Stream/Output/Audio', 'client.id': 901, 'application.process.id': 27893
       } } }
-    ]), 'sharkord_capture');
+    ]), 'dodecagon_capture');
     expect(graph.streams[0]!.processId).toBe(30001);
   });
   it('rejects an audio PID claim without server-authenticated client credentials', () => {
@@ -211,7 +211,7 @@ describe('parseGraph', () => {
       { id: 221, type: 'PipeWire:Interface:Node', info: { props: {
         'media.class': 'Stream/Output/Audio', 'client.id': 901, 'application.process.id': 27893
       } } }
-    ]), 'sharkord_capture');
+    ]), 'dodecagon_capture');
     expect(graph.streams[0]!.processId).toBeNull();
   });
   it('rejects an unverified application PID behind a PulseAudio proxy', () => {
@@ -222,7 +222,7 @@ describe('parseGraph', () => {
       { id: 221, type: 'PipeWire:Interface:Node', info: { props: {
         'media.class': 'Stream/Output/Audio', 'client.id': 901, 'application.process.id': 27893
       } } }
-    ]), 'sharkord_capture');
+    ]), 'dodecagon_capture');
     expect(graph.streams[0]!.processId).toBeNull();
   });
   it('resolves native PipeWire stream PIDs from their client when absent on the node', () => {
@@ -233,10 +233,10 @@ describe('parseGraph', () => {
     objects.push({ id: 900, type: 'PipeWire:Interface:Client', info: { props: {
       'pipewire.sec.pid': '10845', 'application.process.id': '10845'
     } } });
-    expect(parseGraph(JSON.stringify(objects), 'sharkord_capture').streams[0]!.processId).toBe(10845);
+    expect(parseGraph(JSON.stringify(objects), 'dodecagon_capture').streams[0]!.processId).toBe(10845);
   });
   it('keeps every playback stream by id, even when names collide', () => {
-    const graph = parseGraph(PW_DUMP, 'sharkord_capture');
+    const graph = parseGraph(PW_DUMP, 'dodecagon_capture');
 
     expect(graph.streams).toEqual([
       { nodeId: 221, appName: 'Google Chrome', processId: 27893, ports: [{ id: 400, name: 'output_FL' }, { id: 401, name: 'output_FR' }] },
@@ -261,7 +261,7 @@ describe('parseGraph', () => {
           'node.driver-id': 502
         } }
       }
-    ]), 'sharkord_capture');
+    ]), 'dodecagon_capture');
 
     expect(graph.videoCaptures).toEqual([{ nodeId: 710, processId: 2369069, targetSerials: ['9001'] }]);
     expect(graph.videoCaptures[0]!.targetSerials).not.toContain('502');
@@ -279,13 +279,13 @@ describe('parseGraph', () => {
         type: 'PipeWire:Interface:Node',
         info: { props: { 'media.class': 'Stream/Input/Video', 'application.process.id': 999, 'node.target': '9001' } }
       }
-    ]), 'sharkord_capture');
+    ]), 'dodecagon_capture');
     expect(graph.videoCaptures).toEqual([{ nodeId: 710, processId: 999, targetSerials: ['9001'] }]);
   });
 
   it('survives output that is not the expected JSON', () => {
-    expect(parseGraph('not json', 'sharkord_capture')).toEqual({ streams: [], tapNodeId: null, tapPorts: [], videoCaptures: [] });
-    expect(parseGraph('{"id":1}', 'sharkord_capture')).toEqual({ streams: [], tapNodeId: null, tapPorts: [], videoCaptures: [] });
+    expect(parseGraph('not json', 'dodecagon_capture')).toEqual({ streams: [], tapNodeId: null, tapPorts: [], videoCaptures: [] });
+    expect(parseGraph('{"id":1}', 'dodecagon_capture')).toEqual({ streams: [], tapNodeId: null, tapPorts: [], videoCaptures: [] });
   });
 });
 
@@ -324,11 +324,11 @@ describe('TapCapture', () => {
       '-P',
       'node.autoconnect=false',
       '-P',
-      'node.name=sharkord_capture',
+      'node.name=dodecagon_capture',
       '-P',
-      'application.name=sharkord-desktop',
+      'application.name=dodecagon-desktop',
       '-P',
-      'node.description=sharkord-desktop',
+      'node.description=dodecagon-desktop',
       '--container=raw',
       '--format',
       'f32',
@@ -506,15 +506,15 @@ describe('TapCapture', () => {
     tap.stop();
   });
 
-  it('keeps explicit whole-screen audio tied to its exact video stream and excludes Sharkord', async () => {
+  it('keeps explicit whole-screen audio tied to its exact video stream and excludes Dodecagon', async () => {
     const objects = JSON.parse(withPortalCapture());
     objects.push({
       id: 223,
       type: 'PipeWire:Interface:Node',
       info: { props: {
         'media.class': 'Stream/Output/Audio',
-        'node.name': 'Sharkord',
-        'application.name': 'Sharkord',
+        'node.name': 'Dodecagon',
+        'application.name': 'Dodecagon',
         'application.process.id': 2369069
       } }
     });

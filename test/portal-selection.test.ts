@@ -20,7 +20,7 @@ const OWNERS = {
   portalOwner: ':1.29',
   backendOwner: ':1.41',
   backendName: 'org.freedesktop.impl.portal.desktop.hyprland',
-  appId: 'sharkord-desktop'
+  appId: 'dodecagon-desktop'
 };
 
 const startCall = (overrides: Record<string, unknown> = {}) => ({
