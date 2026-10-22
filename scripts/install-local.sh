@@ -2,18 +2,18 @@
 # Installs the app for the current user from the latest GitHub release, without root.
 # The AppImage lands in ~/.local/opt and keeps itself up to date; a launcher, icon and desktop
 # entry are installed too. FUSE is used when present, otherwise the runtime extracts itself.
-# SHARKORD_LOCAL_BUILD=1 installs the checkout instead of downloading a release.
+# DODECAGON_LOCAL_BUILD=1 installs the checkout instead of downloading a release.
 set -euo pipefail
 
 repo="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 data="${XDG_DATA_HOME:-$HOME/.local/share}"
-opt="$HOME/.local/opt/sharkord-desktop"
-bin="$HOME/.local/bin/sharkord-desktop"
-image="$opt/Sharkord.AppImage"
-launcher_template="$repo/scripts/sharkord-desktop-launcher.sh"
+opt="$HOME/.local/opt/dodecagon-desktop"
+bin="$HOME/.local/bin/dodecagon-desktop"
+image="$opt/Dodecagon.AppImage"
+launcher_template="$repo/scripts/dodecagon-desktop-launcher.sh"
 
 asset_url() {
-  curl -fsSL https://api.github.com/repos/dodecagon-mesh/sharkord-desktop/releases/latest |
+  curl -fsSL https://api.github.com/repos/dodecagon-mesh/dodecagon-desktop/releases/latest |
     grep -o 'https://[^"]*linux-x86_64.AppImage' | head -1
 }
 
@@ -29,7 +29,7 @@ unpack() {
 cd "$repo"
 mkdir -p "$opt" "$(dirname "$bin")" "$data/applications" "$data/icons/hicolor/512x512/apps"
 
-if [ -n "${SHARKORD_LOCAL_BUILD:-}" ]; then
+if [ -n "${DODECAGON_LOCAL_BUILD:-}" ]; then
   echo "building locally…"
   node build.mjs >/dev/null
   npx electron-builder --linux dir --publish never >/dev/null
@@ -56,18 +56,18 @@ fi
 
 sed "s|@IMAGE@|$image|; s|@OPT@|$opt|" "$launcher_template" > "$bin"
 chmod +x "$bin"
-install -m 644 "$repo/build/icon.png" "$data/icons/hicolor/512x512/apps/sharkord-desktop.png"
+install -m 644 "$repo/build/icon.png" "$data/icons/hicolor/512x512/apps/dodecagon-desktop.png"
 
-cat > "$data/applications/sharkord-desktop.desktop" <<EOF
+cat > "$data/applications/dodecagon-desktop.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Sharkord
-Comment=Sharkord client whose screen share carries all PC audio except Sharkord
+Name=Dodecagon
+Comment=Dodecagon client whose screen share carries all PC audio except Dodecagon
 Exec=$bin
-Icon=sharkord-desktop
+Icon=dodecagon-desktop
 Terminal=false
 Categories=Network;InstantMessaging;
-StartupWMClass=sharkord-desktop
+StartupWMClass=dodecagon-desktop
 EOF
 
 if command -v update-desktop-database >/dev/null; then
@@ -78,4 +78,4 @@ if command -v gtk-update-icon-cache >/dev/null; then
 fi
 
 echo "installed: $bin"
-echo "launcher:  $data/applications/sharkord-desktop.desktop"
+echo "launcher:  $data/applications/dodecagon-desktop.desktop"

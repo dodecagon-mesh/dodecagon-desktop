@@ -37,7 +37,7 @@ const clientLog = (): string => {
 };
 
 beforeEach(() => {
-  state.directory = mkdtempSync(join(tmpdir(), 'sharkord-renderer-log-test-'));
+  state.directory = mkdtempSync(join(tmpdir(), 'dodecagon-renderer-log-test-'));
   vi.resetModules();
   vi.spyOn(console, 'log').mockImplementation(() => {});
 });

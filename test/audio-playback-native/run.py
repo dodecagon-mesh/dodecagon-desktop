@@ -11,13 +11,13 @@ mode = sys.argv[1] if len(sys.argv) > 1 else 'automatic'
 scratch = os.environ.get('TMPDIR')
 if not scratch:
     raise RuntimeError('Set TMPDIR to a scratch directory before running')
-root = Path(tempfile.mkdtemp(prefix='sharkord-audio-', dir=scratch))
+root = Path(tempfile.mkdtemp(prefix='dodecagon-audio-', dir=scratch))
 root.chmod(0o700)
 env = os.environ.copy()
 env.update(PIPEWIRE_RUNTIME_DIR=str(root), PIPEWIRE_REMOTE=str(root / 'pipewire-0'),
            PULSE_RUNTIME_PATH=str(root),
            PULSE_SERVER=f'unix:{root}/native', PULSE_SINK='fixture_sink',
-           SHARKORD_AUDIO_FIXTURE_DIR=str(root), SHARKORD_AUDIO_PROBE_MODE=mode)
+           DODECAGON_AUDIO_FIXTURE_DIR=str(root), DODECAGON_AUDIO_PROBE_MODE=mode)
 pwlog = open(root / 'pipewire.log', 'w')
 native = open(root / 'native.log', 'w')
 server_env = {**env, 'PIPEWIRE_CONFIG_DIR': str(HERE)}

@@ -1,10 +1,10 @@
-# Sharkord Desktop
+# Dodecagon
 
-[![build](https://github.com/dodecagon-mesh/sharkord-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/dodecagon-mesh/sharkord-desktop/actions/workflows/build.yml)
+[![build](https://github.com/dodecagon-mesh/dodecagon-desktop/actions/workflows/build.yml/badge.svg)](https://github.com/dodecagon-mesh/dodecagon-desktop/actions/workflows/build.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Electron client for a self-hosted [Sharkord](https://github.com/Sharkord/sharkord) instance whose
-screen shares carry **the whole PC's audio except Sharkord itself**, while Linux and Windows
+Electron client for a self-hosted [Dodecagon](https://github.com/dodecagon-mesh/dodecagon) instance whose
+screen shares carry **the whole PC's audio except Dodecagon itself**, while Linux and Windows
 application shares carry only that application's process tree. Viewers never hear their own voices.
 
 > [!NOTE]
@@ -17,7 +17,7 @@ application shares carry only that application's process tree. Viewers never hea
 | Platform | Status |
 |---|---|
 | **Linux + PipeWire** | Full feature — this is what the project is about, verified on Arch/Hyprland/Wayland with Electron 44 |
-| **Windows** | Native process-loopback capture: screen shares exclude Sharkord's process tree; window shares include only the selected application's process tree. Availability is determined by native activation, not a Windows-version gate. Windows audio measurements are still required; a successful build alone does not prove isolation. |
+| **Windows** | Native process-loopback capture: screen shares exclude Dodecagon's process tree; window shares include only the selected application's process tree. Availability is determined by native activation, not a Windows-version gate. Windows audio measurements are still required; a successful build alone does not prove isolation. |
 | macOS | Wrapper only, untested. No own capture: the share carries whatever the platform gives `getDisplayMedia`, after the same proof. |
 
 - **Linux + AppImage**: camera can disappear (`NotFoundError: Requested device not found`) after a
@@ -28,14 +28,19 @@ Builds for all three platforms are produced by CI.
 
 ## Install
 
-Download from [Releases](https://github.com/dodecagon-mesh/sharkord-desktop/releases): AppImage/deb,
+Download from [Releases](https://github.com/dodecagon-mesh/dodecagon-desktop/releases): AppImage/deb,
 Windows installer/portable, macOS dmg/zip. macOS and Windows builds are unsigned, so expect a
 Gatekeeper/SmartScreen warning.
 
 On first start the app asks which server to open and remembers the answer in
-`<userData>/config.json`; change it later with **Ctrl/Cmd+Shift+S** or by setting `SHARKORD_URL`
+`<userData>/config.json`; change it later with **Ctrl/Cmd+Shift+S** or by setting `DODECAGON_URL`
 (passing `--url=` also works and wins over the stored value). Anything without a scheme is assumed to
 be `https://`, and the address is validated before it is used.
+
+`<userData>` follows the app name, so it is `~/.config/dodecagon-desktop` on Linux,
+`~/Library/Application Support/Dodecagon` on macOS and `%APPDATA%\Dodecagon` on Windows. An
+installation that stored its server under the old app name keeps it: the stored file is copied over
+once, when the new one is still missing.
 
 If the server cannot be reached, the client stays open and returns to this form with the attempted
 address and connection error. Retry or choose another server; a failed connection does not overwrite
@@ -51,10 +56,10 @@ into it:
 game ─┐
 music ├─► (their own devices, unchanged) ──► you hear everything as before
 browser┘         │
-                 └────────► [sharkord_capture]  (a pw-record node, not a device)
+                 └────────► [dodecagon_capture]  (a pw-record node, not a device)
                                       │
                                       ▼
-                          injected audio track ──► Sharkord SCREEN_AUDIO producer
+                          injected audio track ──► Dodecagon SCREEN_AUDIO producer
 
 this app's own playback is never linked ──► viewers never hear themselves
 ```
@@ -67,10 +72,10 @@ this app's own playback is never linked ──► viewers never hear themselves
 3. The client's own playback is excluded by process tree, so the voice channel is audible to you and
    absent from the capture.
 4. The captured PCM is injected as a real audio track into a main-world patch of `getDisplayMedia`,
-   and the stock Sharkord client publishes it as its usual `SCREEN_AUDIO` producer.
+   and the stock Dodecagon client publishes it as its usual `SCREEN_AUDIO` producer.
 
 On Windows the PCM comes from `native/windows/win-audio-capture.exe`. A screen selects WASAPI
-process-loopback **exclude** mode for Sharkord's process tree; a window selects **include** mode for
+process-loopback **exclude** mode for Dodecagon's process tree; a window selects **include** mode for
 the process owning the chosen HWND. Process loopback spans playback endpoints, rather than capturing
 only the default device. A `READY` acknowledgement confirms startup even when the selected app is
 silent. Missing or failed native capture leaves the share video-only: Windows never falls back to
@@ -82,7 +87,7 @@ On X11, a selected window's `_NET_WM_PID` identifies its application; `xprop` mu
 An unresolved window stays video-only, never falling back to all-system audio.
 
 Wayland's portal does **not** expose the selected window or even distinguish a window from a
-screen in Electron's source metadata. After the system video picker, Sharkord asks which
+screen in Electron's source metadata. After the system video picker, Dodecagon asks which
 application to capture for audio. On Hyprland, choose the matching window from the `hyprctl`
 list. Other Wayland compositors currently offer video-only application sharing. The default is
 **Video only**; full-PC audio requires explicitly confirming **I selected an entire screen**.
@@ -106,10 +111,10 @@ TMPDIR="${TMPDIR:-$HOME/.cache}" bun test/pipewire-isolation-smoke.ts --baseline
 
 Closing the window keeps the app in the tray (capture and voice stay connected) and says so once.
 If the tray is unavailable or fails during setup, closing quits instead of hiding an unreachable window.
-Quit from the **Quit Sharkord** tray item, the Server menu, or with Ctrl/Cmd+Q — all three paths are
-verified in CI-less local tests via `SHARKORD_DEBUG_QUIT_AFTER` / `SHARKORD_DEBUG_APP_QUIT_AFTER`. A downloaded update is swapped in on
+Quit from the **Quit** tray item, the Server menu, or with Ctrl/Cmd+Q — all three paths are
+verified in CI-less local tests via `DODECAGON_DEBUG_QUIT_AFTER` / `DODECAGON_DEBUG_APP_QUIT_AFTER`. A downloaded update is swapped in on
 the way out **without** relaunching the app, so quitting really quits — set
-`SHARKORD_UPDATE_NO_PROMPT=1` to skip the restart prompt entirely.
+`DODECAGON_UPDATE_NO_PROMPT=1` to skip the restart prompt entirely.
 
 HTTP(S) links the client opens in a new window, and clicked cross-origin links, are opened in the
 default system browser instead of Electron child windows. Same-origin in-app navigation is preserved,
@@ -147,13 +152,13 @@ bun run dist:win
 producing a Windows client without native audio capture.
 
 `scripts/install-local.sh` installs the app for the current user without root: it takes the Linux
-AppImage from the latest GitHub release into `~/.local/opt`, puts `sharkord-desktop` on `PATH` and
-adds icon + desktop entry. `SHARKORD_LOCAL_BUILD=1` builds from the checkout instead of downloading.
+AppImage from the latest GitHub release into `~/.local/opt`, puts `dodecagon-desktop` on `PATH` and
+adds icon + desktop entry. `DODECAGON_LOCAL_BUILD=1` builds from the checkout instead of downloading.
 Arch users can also `sudo pacman -U` the `.pacman` from Releases.
 
 ### Updates
 
-The app checks the [release page](https://github.com/dodecagon-mesh/sharkord-desktop/releases) shortly after
+The app checks the [release page](https://github.com/dodecagon-mesh/dodecagon-desktop/releases) shortly after
 startup and every time you pick **Server → Check for updates…**:
 
 - **Linux cameras can die when a second instance hands off**: the AppImage runtime extracts into one
@@ -166,7 +171,7 @@ startup and every time you pick **Server → Check for updates…**:
 - **Windows installer (NSIS)** and **Linux AppImage** replace themselves in place; a downloaded update
   asks for a restart and is also applied on the next quit.
 - **deb / pacman** installs are updated by their package manager — the app says so instead of failing.
-- `SHARKORD_UPDATE_FEED=https://…` points the updater at another host (a mirror, or a local test feed).
+- `DODECAGON_UPDATE_FEED=https://…` points the updater at another host (a mirror, or a local test feed).
 - Development checkouts never update themselves (`app.isPackaged` gate).
 
 ### Secure connection defaults
@@ -188,12 +193,12 @@ to system DNS or an inherited proxy.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `SHARKORD_URL` | — (asks on first run) | web client to load (`--url=` also works; both beat the stored server) |
-| `SHARKORD_TAP_NAME` | `sharkord_capture` | name of the recording node other apps are linked into |
-| `SHARKORD_WINDOWS_AUDIO` | — | Legacy `on` override for inconclusive browser-audio probes on non-Windows platforms. Ignored on Windows: native isolation cannot be bypassed. |
-| `SHARKORD_DEBUG_PCM` | — | dump the recorded PCM to this WAV path while streaming |
-| `SHARKORD_DEBUG_QUIT_AFTER` | — | seconds after startup, run the tray's quit path (regression test) |
-| `SHARKORD_DEBUG_APP_QUIT_AFTER` | — | seconds after startup, call `app.quit()` like Ctrl+Q does |
+| `DODECAGON_URL` | — (asks on first run) | web client to load (`--url=` also works; both beat the stored server) |
+| `DODECAGON_TAP_NAME` | `dodecagon_capture` | name of the recording node other apps are linked into |
+| `DODECAGON_WINDOWS_AUDIO` | — | Legacy `on` override for inconclusive browser-audio probes on non-Windows platforms. Ignored on Windows: native isolation cannot be bypassed. |
+| `DODECAGON_DEBUG_PCM` | — | dump the recorded PCM to this WAV path while streaming |
+| `DODECAGON_DEBUG_QUIT_AFTER` | — | seconds after startup, run the tray's quit path (regression test) |
+| `DODECAGON_DEBUG_APP_QUIT_AFTER` | — | seconds after startup, call `app.quit()` like Ctrl+Q does |
 
 ## Verification
 
@@ -247,10 +252,10 @@ asks the user:
   available previews, Screens/Windows/All tabs, and the first entry pre-selected. Enter or Space on
   a source, double-click, or Share starts sharing; Enter on Cancel cancels, and Enter on a tab only
   switches tabs. Esc cancels. Full source names are available as tooltips.
-  Until 0.4.0 this case silently took the first source, which on Windows was usually the Sharkord
+  Until 0.4.0 this case silently took the first source, which on Windows was usually the Dodecagon
   window itself — that is fixed by the picker.
 
-`SHARKORD_PICKER=inapp|system` forces either picker (useful when a compositor's portal misbehaves).
+`DODECAGON_PICKER=inapp|system` forces either picker (useful when a compositor's portal misbehaves).
 
 The in-app picker refreshes window names, icons and availability as well as thumbnails. Closing the
 selected window clears the selection and disables Share; newly opened windows become selectable
@@ -267,7 +272,7 @@ an active capture.
 
 ### Background window-share frame rate (0.6.11)
 
-After the user selects a source, Sharkord retains the native track's selected frame rate with
+After the user selects a source, Dodecagon retains the native track's selected frame rate with
 [`MediaStreamTrack.applyConstraints()`](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/applyConstraints).
 The floor is applied after selection because `getDisplayMedia()` forbids `min`/`exact` constraints.
 Existing resolution constraints, the original video track, and the audio path are preserved.
@@ -276,7 +281,7 @@ other application's flags. If the native capturer rejects the preference, the sh
 and a diagnostic is logged instead of failing the request.
 
 Verified with a real Chrome window, native Wayland capture and a WebRTC loopback receiver on
-Electron 44.3.0 / Hyprland 0.56.2. With both Chrome and Sharkord on hidden workspaces, the
+Electron 44.3.0 / Hyprland 0.56.2. With both Chrome and Dodecagon on hidden workspaces, the
 60-FPS share improved from approximately **35 to 59 captured/decoded FPS**; receiver painting
 improved from approximately **34 to 50 FPS** in the software-rendered test environment.
 The source produced approximately 53 animation frames per second after the fix, so decoded
@@ -291,7 +296,7 @@ The built-in tone-exclusion self-test also passed with a private virtual sink: e
 amplitude 0.350 at both the tap and injected track, own-client tone 0.000, and control tone 0.350.
 No test audio was routed to a host device.
 
-Keep all Sharkord debugging invisible: use an isolated virtual display or private headless compositor,
+Keep all Dodecagon debugging invisible: use an isolated virtual display or private headless compositor,
 disposable profiles, and isolated desktop/audio services. Do not launch debug windows or media probes
 in the user's working session.
 
@@ -302,7 +307,7 @@ has not been runtime-verified. Release packaging checks are not that proof.
 
 - **Source-rendering limits still apply**: the frame-rate floor prevents the measured background
   capture slowdown; it cannot force another application to animate a minimized/suspended window,
-  overcome GPU/encoder overload, or guarantee distinct frames at the selected rate. Sharkord does
+  overcome GPU/encoder overload, or guarantee distinct frames at the selected rate. Dodecagon does
   not change compositor rules, global browser policies or power settings.
 - **Windows 10 window share can freeze Explorer**: Chromium's window capturer is always
   Windows.Graphics.Capture. On some Windows 10 + GPU driver combinations that wedges DWM —
@@ -330,7 +335,7 @@ has not been runtime-verified. Release packaging checks are not that proof.
 - Applications that bypass the PipeWire graph (raw ALSA exclusive mode) are not captured.
 - Per-application volume and mute are honoured (the tap is taken after them); a sink's own volume or
   mute is not, because the tap never passes through the device.
-- Any *other* Sharkord client on the machine (a browser tab) is a separate application, so it *is*
+- Any *other* Dodecagon client on the machine (a browser tab) is a separate application, so it *is*
   captured — use this app as your client while streaming.
 
 ## Layout

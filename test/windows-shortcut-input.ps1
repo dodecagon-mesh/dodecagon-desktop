@@ -65,7 +65,7 @@ public static class ShortcutInputFixture {
     public static void Run(bool background, long target) {
         if (!background) { Send(new IntPtr(target)); return; }
         using (Form form = new Form()) {
-            form.Text = "Sharkord keyboard focus fixture";
+            form.Text = "Dodecagon keyboard focus fixture";
             form.Width = 400;
             form.Height = 180;
             form.TopMost = true;

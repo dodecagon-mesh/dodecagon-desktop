@@ -16,7 +16,7 @@ $script:Rate = 48000; $script:Channels = 2; $script:FrameBytes = 8
 $script:ReadyTimeoutMs = 15000; $script:RunMs = 3000
 $script:AudibleFloor = 0.01; $script:PresentRatio = 0.3; $script:AbsentRatio = 0.01
 $script:ToneFrequencies = @(997.0, 1493.0, 2137.0)
-$script:ToneLabels = @{ 997.0 = 'simulated Sharkord'; 1493.0 = 'shared window app'; 2137.0 = 'unrelated app' }
+$script:ToneLabels = @{ 997.0 = 'simulated Dodecagon'; 1493.0 = 'shared window app'; 2137.0 = 'unrelated app' }
 $script:Failures = New-Object System.Collections.Generic.List[string]
 $script:Runs = New-Object System.Collections.Generic.List[object]
 $script:Fixtures = New-Object System.Collections.Generic.List[object]
@@ -25,7 +25,7 @@ $script:ReferenceAmplitude = 0.0; $script:PresentThreshold = 0.0; $script:Absent
 $script:ExitCode = 0
 
 $analysisSource = @'
-namespace SharkordAudioSmoke
+namespace DodecagonAudioSmoke
 {
     using System;
     public static class Tone
@@ -65,7 +65,7 @@ internal static class Fixture
         string role = Text(args, "--role", "fixture");
         string gate = Value(args, "--gate-file");
         Form form = new Form();
-        form.Text = "sharkord audio smoke " + role;
+        form.Text = "dodecagon audio smoke " + role;
         form.ShowInTaskbar = false; form.StartPosition = FormStartPosition.Manual;
         form.Location = new Point(40, 40); form.ClientSize = new Size(220, 60); form.Show();
         Console.WriteLine("PID=" + Process.GetCurrentProcess().Id);
@@ -152,7 +152,7 @@ function Compile-Fixture {
 function New-ScratchWindow {
   param([switch]$Destroy)
   $form = New-Object System.Windows.Forms.Form
-  $form.Text = 'sharkord audio smoke scratch window'; $form.ShowInTaskbar = $false; $form.Show()
+  $form.Text = 'dodecagon audio smoke scratch window'; $form.ShowInTaskbar = $false; $form.Show()
   $handle = [string]([int64]$form.Handle.ToInt64() -band 0xFFFFFFFFL)
   if ($Destroy) { $form.Close() }
   return [pscustomobject]@{ Handle = $handle; Form = $form }
@@ -249,7 +249,7 @@ function Get-Amplitudes {
   $amplitudes = @{}
   foreach ($frequency in $script:ToneFrequencies) {
     $values = [double[]]::new($script:Channels)
-    for ($channel = 0; $channel -lt $script:Channels; $channel++) { $values[$channel] = [SharkordAudioSmoke.Tone]::Amplitude($Pcm, $script:Channels, $script:Rate, $frequency, $channel, $tailFrames) }
+    for ($channel = 0; $channel -lt $script:Channels; $channel++) { $values[$channel] = [DodecagonAudioSmoke.Tone]::Amplitude($Pcm, $script:Channels, $script:Rate, $frequency, $channel, $tailFrames) }
     $amplitudes[$frequency] = $values
   }
   $frames = [int]($Pcm.Length / $script:FrameBytes); if ($frames -gt $tailFrames) { $frames = $tailFrames }
@@ -308,10 +308,10 @@ function New-HelperArguments {
 try {
   $script:HelperExe = Resolve-HelperPath -Override $HelperPath
   if (-not (Test-Path -LiteralPath $script:HelperExe)) { throw ('the helper is missing: ' + $script:HelperExe + ' - build it first or pass -HelperPath') }
-  $script:TempDir = (New-Item -ItemType Directory -Path ([IO.Path]::Combine([IO.Path]::GetTempPath(), ('sharkord-audio-smoke-' + [Guid]::NewGuid().ToString('N')))) | Select-Object -ExpandProperty FullName)
+  $script:TempDir = (New-Item -ItemType Directory -Path ([IO.Path]::Combine([IO.Path]::GetTempPath(), ('dodecagon-audio-smoke-' + [Guid]::NewGuid().ToString('N')))) | Select-Object -ExpandProperty FullName)
   $script:FixtureExe = Join-Path $script:TempDir 'fixture.exe'
   Compile-Fixture -Source $fixtureSource -ExePath $script:FixtureExe
-  if (-not ('SharkordAudioSmoke.Tone' -as [type])) { Add-Type -TypeDefinition $analysisSource -Language CSharp -ErrorAction Stop }
+  if (-not ('DodecagonAudioSmoke.Tone' -as [type])) { Add-Type -TypeDefinition $analysisSource -Language CSharp -ErrorAction Stop }
   Write-Host ('helper:  ' + $script:HelperExe)
   Write-Host ('fixture: ' + $script:FixtureExe)
 
@@ -323,8 +323,8 @@ try {
   } else {
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
     $gateFile = Join-Path $script:TempDir 'tone-enabled.flag'
-    Write-Scenario 'fixtures: simulated Sharkord (997 Hz), shared app (1493 Hz), unrelated app (2137 Hz)'
-    $sim = Start-Fixture -Role 'sim-sharkord' -Tone 997.0
+    Write-Scenario 'fixtures: simulated Dodecagon (997 Hz), shared app (1493 Hz), unrelated app (2137 Hz)'
+    $sim = Start-Fixture -Role 'sim-dodecagon' -Tone 997.0
     $shared = Start-Fixture -Role 'shared-app' -Tone 1493.0 -GateFile $gateFile
     $unrelated = Start-Fixture -Role 'unrelated-app' -Tone 2137.0
     Write-Host ('    roots: sim=' + $sim.FixturePid + ' (hwnd ' + $sim.Hwnd + ', child ' + $sim.ChildPid + '), shared=' + $shared.FixturePid + ' (hwnd ' + $shared.Hwnd + ', child ' + $shared.ChildPid + '), unrelated=' + $unrelated.FixturePid + ' (hwnd ' + $unrelated.Hwnd + ', child ' + $unrelated.ChildPid + ')')
@@ -338,8 +338,8 @@ try {
       $measure = Get-Amplitudes -Pcm $run.Bytes
       $reference = [Math]::Min($measure.Amplitudes[997.0][0], $measure.Amplitudes[997.0][1])
       if ($reference -lt $script:AudibleFloor) {
-        Write-Fail ($scenario + ' | the 997 Hz simulated-Sharkord tone measured ' + (Num -Value $reference) + ', below the floor ' + (Num -Value $script:AudibleFloor) + '; no audible capture - check the playback device and system volume')
-        throw 'the positive control could not hear the simulated Sharkord tone'
+        Write-Fail ($scenario + ' | the 997 Hz simulated-Dodecagon tone measured ' + (Num -Value $reference) + ', below the floor ' + (Num -Value $script:AudibleFloor) + '; no audible capture - check the playback device and system volume')
+        throw 'the positive control could not hear the simulated Dodecagon tone'
       }
       $script:ReferenceAmplitude = $reference
       $script:PresentThreshold = $reference * $script:PresentRatio
@@ -351,7 +351,7 @@ try {
     Invoke-Scenario -Scenario 'scenario 2a (window capture of the shared app: READY while it is silent)' -HelperArguments (New-HelperArguments -ExcludePid $sim.FixturePid -IncludeWindow $shared.Hwnd) -ExpectedPid $shared.FixturePid -Expect @{ 997.0 = $false; 1493.0 = $false; 2137.0 = $false } | Out-Null
     Invoke-Scenario -Scenario 'scenario 2b (window capture of the shared app: the tone resumes without a restart)' -HelperArguments (New-HelperArguments -ExcludePid $sim.FixturePid -IncludeWindow $shared.Hwnd) -ExpectedPid $shared.FixturePid -Expect @{ 997.0 = $false; 1493.0 = $true; 2137.0 = $false } -BeforeMs 1200 -AfterMs 2800 -GateFile $gateFile | Out-Null
     if (-not (Test-Path -LiteralPath $gateFile)) { New-Item -ItemType File -Path $gateFile -Force | Out-Null }
-    Invoke-Scenario -Scenario 'scenario 3 (screen capture excluding the simulated Sharkord)' -HelperArguments (New-HelperArguments -ExcludePid $sim.FixturePid) -ExpectedPid $sim.FixturePid -Expect @{ 997.0 = $false; 1493.0 = $true; 2137.0 = $true } | Out-Null
+    Invoke-Scenario -Scenario 'scenario 3 (screen capture excluding the simulated Dodecagon)' -HelperArguments (New-HelperArguments -ExcludePid $sim.FixturePid) -ExpectedPid $sim.FixturePid -Expect @{ 997.0 = $false; 1493.0 = $true; 2137.0 = $true } | Out-Null
     Invoke-Scenario -Scenario 'scenario 4 (window capture of the shared app includes only its tree)' -HelperArguments (New-HelperArguments -ExcludePid $sim.FixturePid -IncludeWindow $shared.Hwnd) -ExpectedPid $shared.FixturePid -Expect @{ 997.0 = $false; 1493.0 = $true; 2137.0 = $false } | Out-Null
 
     Invoke-Refusal -Scenario 'scenario 5a (including the excluded app window is refused)' -HelperArguments (New-HelperArguments -ExcludePid $sim.FixturePid -IncludeWindow $sim.Hwnd)

@@ -1,8 +1,9 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  carryOverLegacySettings,
   isServerOrigin,
   normalizeServerUrl,
   readSentryDsn,
@@ -11,14 +12,14 @@ import {
   saveSentryDsn
 } from '../src/main/server-config';
 
-const tempConfigPath = (): string => join(mkdtempSync(join(tmpdir(), 'sharkord-server-')), 'config.json');
+const tempConfigPath = (): string => join(mkdtempSync(join(tmpdir(), 'dodecagon-server-')), 'config.json');
 
 describe('normalizeServerUrl', () => {
   it('accepts what people paste', () => {
-    expect(normalizeServerUrl('sharkord.example.com')).toBe('https://sharkord.example.com');
-    expect(normalizeServerUrl('https://sharkord.example.com/')).toBe('https://sharkord.example.com');
+    expect(normalizeServerUrl('dodecagon.example.com')).toBe('https://dodecagon.example.com');
+    expect(normalizeServerUrl('https://dodecagon.example.com/')).toBe('https://dodecagon.example.com');
     expect(normalizeServerUrl('  http://192.168.1.10:4991  ')).toBe('http://192.168.1.10:4991');
-    expect(normalizeServerUrl('https://chat.example.com/sharkord/')).toBe('https://chat.example.com/sharkord');
+    expect(normalizeServerUrl('https://chat.example.com/dodecagon/')).toBe('https://chat.example.com/dodecagon');
     expect(normalizeServerUrl('http://localhost:4991')).toBe('http://localhost:4991');
   });
 
@@ -50,10 +51,10 @@ describe('server permission origins', () => {
 describe('server config file', () => {
   it('round-trips the chosen server', () => {
     const path = tempConfigPath();
-    saveServerUrl(path, 'https://sharkord.example.com');
+    saveServerUrl(path, 'https://dodecagon.example.com');
 
-    expect(readServerUrl(path)).toBe('https://sharkord.example.com');
-    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ url: 'https://sharkord.example.com' });
+    expect(readServerUrl(path)).toBe('https://dodecagon.example.com');
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ url: 'https://dodecagon.example.com' });
   });
 
   it('treats a missing, broken or hostile config as "no server chosen"', () => {
@@ -73,7 +74,7 @@ describe('server config file', () => {
   });
 
   it('creates missing directories on save', () => {
-    const path = join(mkdtempSync(join(tmpdir(), 'sharkord-server-')), 'nested', 'deeper', 'config.json');
+    const path = join(mkdtempSync(join(tmpdir(), 'dodecagon-server-')), 'nested', 'deeper', 'config.json');
     saveServerUrl(path, 'https://example.com');
     expect(readServerUrl(path)).toBe('https://example.com');
   });
@@ -81,10 +82,10 @@ describe('server config file', () => {
   it('keeps the saved dsn when the server url changes and vice versa', () => {
     const path = tempConfigPath();
     saveSentryDsn(path, 'https://key@errors.example.com/3');
-    saveServerUrl(path, 'https://sharkord.example.com');
+    saveServerUrl(path, 'https://dodecagon.example.com');
 
     expect(readSentryDsn(path)).toBe('https://key@errors.example.com/3');
-    expect(readServerUrl(path)).toBe('https://sharkord.example.com');
+    expect(readServerUrl(path)).toBe('https://dodecagon.example.com');
   });
 
   it('reports nothing until a dsn is saved, and forgets it when cleared', () => {
@@ -97,5 +98,43 @@ describe('server config file', () => {
 
     saveSentryDsn(path, null);
     expect(readSentryDsn(path)).toBeNull();
+  });
+});
+
+describe('carryOverLegacySettings', () => {
+  it('copies the stored server over when the new file is missing', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'dodecagon-carryover-'));
+    const legacyPath = join(directory, 'sharkord-desktop', 'config.json');
+    const path = join(directory, 'dodecagon-desktop', 'config.json');
+    mkdirSync(dirname(legacyPath), { recursive: true });
+    writeFileSync(legacyPath, JSON.stringify({ url: 'https://dodecagon.example.com' }));
+
+    expect(carryOverLegacySettings(path, legacyPath)).toBe(true);
+
+    expect(readServerUrl(path)).toBe('https://dodecagon.example.com');
+  });
+
+  it('keeps the current file and leaves the old one alone', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'dodecagon-carryover-'));
+    const legacyPath = join(directory, 'sharkord-desktop', 'config.json');
+    const path = join(directory, 'dodecagon-desktop', 'config.json');
+    mkdirSync(dirname(legacyPath), { recursive: true });
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(legacyPath, JSON.stringify({ url: 'https://old.example.com' }));
+    writeFileSync(path, JSON.stringify({ url: 'https://current.example.com' }));
+
+    expect(carryOverLegacySettings(path, legacyPath)).toBe(false);
+
+    expect(readServerUrl(path)).toBe('https://current.example.com');
+    expect(readServerUrl(legacyPath)).toBe('https://old.example.com');
+  });
+
+  it('does nothing when there is no old file', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'dodecagon-carryover-'));
+    const legacyPath = join(directory, 'sharkord-desktop', 'config.json');
+    const path = join(directory, 'dodecagon-desktop', 'config.json');
+
+    expect(carryOverLegacySettings(path, legacyPath)).toBe(false);
+    expect(readServerUrl(path)).toBeNull();
   });
 });

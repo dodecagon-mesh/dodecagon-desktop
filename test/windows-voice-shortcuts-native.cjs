@@ -7,12 +7,12 @@ const { join } = require('node:path');
 const { writeFileSync } = require('node:fs');
 const exec = promisify(execFile);
 if (process.platform !== 'win32') throw new Error('This native test requires Windows');
-const baseline = process.env.SHARKORD_SHORTCUT_BASELINE === '1';
+const baseline = process.env.DODECAGON_SHORTCUT_BASELINE === '1';
 app.setPath('userData', join(app.getAppPath(), 'profile'));
 app.setPath('appData', join(app.getAppPath(), 'app-data'));
 const server = createServer((_request, response) => {
   response.setHeader('Content-Type', 'text/html');
-  response.end(`<!doctype html><title>Sharkord shortcut receiver</title><p>Keyboard fixture</p>
+  response.end(`<!doctype html><title>Dodecagon shortcut receiver</title><p>Keyboard fixture</p>
 <script>window.voiceKeys=[];window.addEventListener('keydown',event=>{
 if(event.ctrlKey&&event.shiftKey&&!event.altKey&&!event.metaKey&&['KeyM','KeyD'].includes(event.code)){
 event.preventDefault();if(!event.repeat)window.voiceKeys.push(event.code);
@@ -25,7 +25,7 @@ const finish = (code, error) => {
   if (finished) return;
   finished = true;
   if (error) { result.error = error.stack || String(error); console.error(result.error); }
-  writeFileSync(process.env.SHARKORD_SHORTCUT_RESULT, JSON.stringify(result, null, 2));
+  writeFileSync(process.env.DODECAGON_SHORTCUT_RESULT, JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
   server.close();
   if (code === 0) app.quit();
@@ -80,6 +80,6 @@ app.on('web-contents-created', (_event, contents) => {
 });
 server.listen(0, '127.0.0.1', () => {
   process.argv.push(`--url=http://127.0.0.1:${server.address().port}`);
-  require(process.env.SHARKORD_SHORTCUT_MAIN);
+  require(process.env.DODECAGON_SHORTCUT_MAIN);
 });
 setTimeout(() => finish(1, new Error('Native shortcut test timed out')), 60000).unref();

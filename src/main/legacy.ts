@@ -28,8 +28,10 @@ export const removeLegacyRouting = (
     const modules = execFileSync('pactl', ['list', 'modules'], { encoding: 'utf8' });
     for (const block of modules.split('Module #').slice(1)) {
       const [id] = block.split('\n');
+      // the sink the first design created still carries the old name
       const isOurs =
-        block.includes('sink_name=sharkord_capture') || block.includes('source=sharkord_capture.monitor');
+        block.includes('sink_name=sharkord_capture') ||
+        block.includes('source=sharkord_capture.monitor');
       if (!isOurs) continue;
       try {
         execFileSync('pactl', ['unload-module', String(id).trim()], { stdio: 'ignore' });

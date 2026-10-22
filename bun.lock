@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "sharkord-desktop",
+      "name": "dodecagon-desktop",
       "dependencies": {
         "@sentry/electron": "^8.2.0",
         "electron-updater": "^6.8.9",

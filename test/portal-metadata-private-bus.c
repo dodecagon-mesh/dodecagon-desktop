@@ -239,7 +239,7 @@ static int send_start(sd_bus *frontend, const char *unique_name, struct fixture 
   if (result < 0) return result;
   sd_bus_message *message = NULL;
   result = sd_bus_message_new_method_call(frontend, &message, BACKEND_NAME, PORTAL_PATH, SCREENCAST_IFACE, "Start");
-  if (result >= 0) result = sd_bus_message_append(message, "ooss", request, session, "sharkord-desktop", "");
+  if (result >= 0) result = sd_bus_message_append(message, "ooss", request, session, "dodecagon-desktop", "");
   if (result >= 0) result = sd_bus_message_open_container(message, 'a', "{sv}");
   if (result >= 0) result = sd_bus_message_close_container(message);
   if (result >= 0) result = sd_bus_call_async(frontend, &fixture->call_slots[slot_index], message,
@@ -287,7 +287,7 @@ static int start_helper(const char *path, pid_t expected_pid) {
     close(errors[1]);
     char pid_text[32];
     snprintf(pid_text, sizeof(pid_text), "%ld", (long)expected_pid);
-    execl(path, path, "--pid", pid_text, "--app-id", "sharkord-desktop", "--backend-name", BACKEND_NAME, "--test-counters", (char *)NULL);
+    execl(path, path, "--pid", pid_text, "--app-id", "dodecagon-desktop", "--backend-name", BACKEND_NAME, "--test-counters", (char *)NULL);
     _exit(127);
   }
   close(output[1]);

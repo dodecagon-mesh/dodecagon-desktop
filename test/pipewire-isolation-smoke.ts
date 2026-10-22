@@ -7,8 +7,8 @@ import { writeWav } from '../src/main/wav';
 
 const scratch = process.env.TMPDIR;
 if (!scratch) throw new Error('Set TMPDIR to a scratch directory');
-const dir = await mkdtemp(join(scratch, 'sharkord-window-audio-'));
-const tapName = `sharkord_isolation_smoke_${process.pid}`;
+const dir = await mkdtemp(join(scratch, 'dodecagon-window-audio-'));
+const tapName = `dodecagon_isolation_smoke_${process.pid}`;
 const children: ReturnType<typeof spawn>[] = [];
 const chunks: Buffer[] = [];
 const tap = new TapCapture({

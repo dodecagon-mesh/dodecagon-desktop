@@ -10,10 +10,10 @@ export type UpdaterHooks = {
   beforeInstall: () => void;
 };
 
-const githubFeed = (): { provider: 'github'; owner: 'dodecagon-mesh'; repo: 'sharkord-desktop' } => ({
+const githubFeed = (): { provider: 'github'; owner: 'dodecagon-mesh'; repo: 'dodecagon-desktop' } => ({
   provider: 'github',
   owner: 'dodecagon-mesh',
-  repo: 'sharkord-desktop'
+  repo: 'dodecagon-desktop'
 });
 
 /**
@@ -26,7 +26,7 @@ export const setupAutoUpdates = (hooks: UpdaterHooks): void => {
 
   const { log } = hooks;
   // Point the updater somewhere else (a local server, a mirror) for testing or self-hosting.
-  const feed = process.env.SHARKORD_UPDATE_FEED;
+  const feed = process.env.DODECAGON_UPDATE_FEED;
   if (feed) autoUpdater.setFeedURL({ provider: 'generic', url: feed });
   else autoUpdater.setFeedURL(githubFeed());
 
@@ -49,7 +49,7 @@ export const setupAutoUpdates = (hooks: UpdaterHooks): void => {
   autoUpdater.on('update-downloaded', (info) => {
     pendingVersion = info.version;
     log(`update downloaded: ${info.version}`);
-    if (process.env.SHARKORD_UPDATE_NO_PROMPT === '1') {
+    if (process.env.DODECAGON_UPDATE_NO_PROMPT === '1') {
       log('not prompting: the update installs silently on quit');
       return;
     }
@@ -60,7 +60,7 @@ export const setupAutoUpdates = (hooks: UpdaterHooks): void => {
         defaultId: 0,
         cancelId: 1,
         title: 'Update ready',
-        message: `Sharkord ${info.version} has been downloaded`,
+        message: `Dodecagon ${info.version} has been downloaded`,
         detail: 'Restart to switch to the new version. It will also be applied next time you quit.'
       });
       if (response !== 0) return;
@@ -112,14 +112,14 @@ export const checkForUpdatesNow = async (log: (...parts: unknown[]) => void): Pr
       await dialog.showMessageBox({
         type: 'info',
         title: 'No updates',
-        message: `Sharkord ${app.getVersion()} is the latest version.`
+        message: `Dodecagon ${app.getVersion()} is the latest version.`
       });
       return;
     }
     await dialog.showMessageBox({
       type: 'info',
       title: 'Update found',
-      message: `Sharkord ${latest} is downloading`,
+      message: `Dodecagon ${latest} is downloading`,
       detail: 'You will be asked to restart once it is ready.'
     });
   } catch (error) {

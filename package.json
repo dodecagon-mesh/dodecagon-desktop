@@ -1,8 +1,8 @@
 {
-  "name": "sharkord-desktop",
+  "name": "dodecagon-desktop",
   "version": "0.6.20",
   "private": true,
-  "description": "Sharkord desktop client whose screen share carries the whole PC's audio except Sharkord itself",
+  "description": "Dodecagon desktop client whose screen share carries the whole PC's audio except Dodecagon itself",
   "author": "Talgat Minigaliev <https://github.com/RND332>",
   "license": "MIT",
   "main": "dist/main.js",
@@ -11,7 +11,7 @@
     "build:windows-audio": "powershell -NoProfile -File scripts/build-windows-audio.ps1",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:audio-playback": "bun run build && python3 test/audio-playback-native/run.py && SHARKORD_AUDIO_PROBE_CASE=preferences python3 test/audio-playback-native/run.py",
+    "test:audio-playback": "bun run build && python3 test/audio-playback-native/run.py && DODECAGON_AUDIO_PROBE_CASE=preferences python3 test/audio-playback-native/run.py",
     "test:audio-share": "bun run build && python3 test/pulse-share-native/run.py application && python3 test/pulse-share-native/run.py screen",
     "test:native-portal": "bash scripts/test-portal-metadata-native.sh",
     "test:crash-smoke": "bun run build && electron test/renderer-crash-smoke.cjs && electron test/renderer-crash-smoke.cjs --crash-loop && electron test/renderer-crash-smoke.cjs --readiness-crash && electron test/renderer-crash-smoke.cjs --picker-menu && electron test/renderer-crash-smoke.cjs --picker-tray && electron test/renderer-crash-smoke.cjs --picker-error && electron test/renderer-crash-smoke.cjs --startup-picker-crash && electron test/renderer-crash-smoke.cjs --error-picker-crash",
@@ -27,9 +27,9 @@
     "dist:mac": "bun run build && electron-builder --mac --x64 --arm64 --publish never"
   },
   "build": {
-    "appId": "com.rnd332.sharkord-desktop",
-    "productName": "Sharkord Desktop",
-    "artifactName": "sharkord-desktop-${version}-${os}-${arch}.${ext}",
+    "appId": "com.rnd332.dodecagon-desktop",
+    "productName": "Dodecagon",
+    "artifactName": "dodecagon-desktop-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -55,7 +55,7 @@
         }
       ],
       "category": "Network",
-      "synopsis": "Sharkord client with full-PC screen-share audio (PipeWire)"
+      "synopsis": "Dodecagon client with full-PC screen-share audio (PipeWire)"
     },
     "win": {
       "target": [
@@ -76,7 +76,7 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "sharkord-desktop-${version}-win-${arch}-setup.${ext}"
+      "artifactName": "dodecagon-desktop-${version}-win-${arch}-setup.${ext}"
     },
     "mac": {
       "target": [
@@ -86,13 +86,13 @@
       "category": "public.app-category.social-networking"
     },
     "portable": {
-      "artifactName": "sharkord-desktop-${version}-win-${arch}-portable.${ext}"
+      "artifactName": "dodecagon-desktop-${version}-win-${arch}-portable.${ext}"
     },
     "publish": [
       {
         "provider": "github",
         "owner": "dodecagon-mesh",
-        "repo": "sharkord-desktop"
+        "repo": "dodecagon-desktop"
       }
     ]
   },
@@ -107,11 +107,11 @@
   "trustedDependencies": [
     "electron"
   ],
-  "homepage": "https://github.com/dodecagon-mesh/sharkord-desktop",
-  "desktopName": "sharkord-desktop",
+  "homepage": "https://github.com/dodecagon-mesh/dodecagon-desktop",
+  "desktopName": "dodecagon-desktop",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dodecagon-mesh/sharkord-desktop.git"
+    "url": "https://github.com/dodecagon-mesh/dodecagon-desktop.git"
   },
   "dependencies": {
     "@sentry/electron": "^8.2.0",

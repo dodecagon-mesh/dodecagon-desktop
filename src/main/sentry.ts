@@ -22,7 +22,7 @@ export const initSentry = (dsn: string | null): void => {
       })
     });
   } catch (error) {
-    console.error('[sharkord-desktop] sentry init failed:', error);
+    console.error('[dodecagon-desktop] sentry init failed:', error);
   }
 };
 

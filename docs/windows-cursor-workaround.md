@@ -2,11 +2,11 @@
 
 ## Experimental workaround
 
-Install Sharkord Desktop 0.6.9 or later, then **quit it from its tray menu**
+Install Dodecagon 0.6.9 or later, then **quit it from its tray menu**
 (closing the window is not enough). Start the Windows app with:
 
 ```powershell
-& 'C:\path\to\Sharkord Desktop.exe' --software-rendering
+& 'C:\path\to\Dodecagon.exe' --software-rendering
 ```
 
 Replace the example path with your installed or portable executable. Alternatively,

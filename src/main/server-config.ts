@@ -1,7 +1,28 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 export type StoredServer = { url?: string; sentryDsn?: string | null };
+
+/**
+ * The client used to store its settings under its old name, so an existing installation
+ * has its server in a file the renamed app would never look at. The file is copied over
+ * once, when the new one is still missing.
+ */
+export const carryOverLegacySettings = (
+  settingsPath: string,
+  legacySettingsPath: string
+): boolean => {
+  if (existsSync(settingsPath)) return false;
+  if (!existsSync(legacySettingsPath)) return false;
+
+  try {
+    mkdirSync(dirname(settingsPath), { recursive: true });
+    copyFileSync(legacySettingsPath, settingsPath);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 /** Read-modify-write: saving one setting must never wipe the other. */
 const writeStored = (path: string, patch: StoredServer): void => {
@@ -23,7 +44,7 @@ export const normalizeServerUrl = (input: string): string | null => {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
-  // Anything without an explicit `scheme://` is treated as a host, so "sharkord.example.com"
+  // Anything without an explicit `scheme://` is treated as a host, so "dodecagon.example.com"
   // and "nas:4991" both work while "ftp://…" and "javascript:…" still fail validation below.
   const withScheme = trimmed.includes('://') ? trimmed : `https://${trimmed}`;
 

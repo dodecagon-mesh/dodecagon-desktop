@@ -4,20 +4,20 @@ const { readFileSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');
 const { spawn } = require('node:child_process');
 const { buildSync } = require('esbuild');
-const fixture = process.env.SHARKORD_SHARE_FIXTURE;
-const selectedPid = Number(process.env.SHARKORD_SHARE_SELECTED_PID);
-const mode = process.env.SHARKORD_SHARE_MODE;
+const fixture = process.env.DODECAGON_SHARE_FIXTURE;
+const selectedPid = Number(process.env.DODECAGON_SHARE_SELECTED_PID);
+const mode = process.env.DODECAGON_SHARE_MODE;
 if (!fixture || process.env.PULSE_SERVER !== `unix:${fixture}/native` || !Number.isSafeInteger(selectedPid)) {
   throw new Error('Private share runner required');
 }
 const root = join(__dirname, '../..');
-const tapEntry = process.env.SHARKORD_SHARE_TAP_ENTRY || join(root, 'src/main/tap.ts');
+const tapEntry = process.env.DODECAGON_SHARE_TAP_ENTRY || join(root, 'src/main/tap.ts');
 for (const [name, entry] of [['tap', tapEntry], ['delivery', join(root, 'src/main/pcm-delivery.ts')]]) {
   buildSync({ entryPoints: [entry], outfile: join(fixture, `${name}.cjs`), bundle: true, platform: 'node', format: 'cjs' });
 }
 const { TapCapture, readProcessIdentity, parseGraph, defaultRunner } = require(join(fixture, 'tap.cjs'));
 const { PcmDelivery } = require(join(fixture, 'delivery.cjs'));
-const tapName = `sharkord_share_fixture_${process.pid}`;
+const tapName = `dodecagon_share_fixture_${process.pid}`;
 const tap = new TapCapture({ tapName, pollMs: 80, log: (...args) => console.log('fixture tap:', ...args) });
 const delivery = new PcmDelivery();
 app.setPath('userData', join(fixture, 'profile'));
@@ -84,12 +84,12 @@ setTimeout(() => finish(1, { error: 'share audio deadline' }), 12000).unref();
 app.whenReady().then(async () => {
   own = spawn('paplay', ['--device=fixture_sink', join(fixture, '1760.wav')], { stdio: 'ignore' });
   window = new BrowserWindow({ show: false, webPreferences: {
-    backgroundThrottling: false, preload: join(root, 'dist/preload.js'), additionalArguments: ['--sharkord-capture=pipewire']
+    backgroundThrottling: false, preload: join(root, 'dist/preload.js'), additionalArguments: ['--dodecagon-capture=pipewire']
   } });
   writeFileSync(join(fixture, 'index.html'), '<title>Private screen audio regression</title>');
   await window.loadFile(join(fixture, 'index.html'));
   for (let i = 0; i < 40; i++) {
-    if (await window.webContents.executeJavaScript('!!document.querySelector("[data-sharkord-desktop-version]")')) break;
+    if (await window.webContents.executeJavaScript('!!document.querySelector("[data-dodecagon-desktop-version]")')) break;
     await sleep(50);
   }
   const result = await window.webContents.executeJavaScript(`(async () => {

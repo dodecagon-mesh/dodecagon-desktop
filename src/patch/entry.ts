@@ -8,8 +8,8 @@ const showVersionBadge = (bridge: { appInfo?(): Promise<{ version: string }> }):
   const render = async (): Promise<void> => {
     const { version } = await appInfo();
     const badge = document.createElement('div');
-    badge.dataset.sharkordDesktopVersion = version;
-    badge.textContent = `Sharkord Desktop ${version}`;
+    badge.dataset.dodecagonDesktopVersion = version;
+    badge.textContent = `Dodecagon ${version}`;
     Object.assign(badge.style, {
       position: 'fixed',
       top: '6px',
@@ -36,25 +36,25 @@ const showVersionBadge = (bridge: { appInfo?(): Promise<{ version: string }> }):
 type Bridge = PatchEnvironment['bridge'];
 
 const globals = globalThis as {
-  sharkordDesktop?: Bridge;
+  dodecagonDesktop?: Bridge;
   MediaStreamTrackGenerator?: unknown;
   AudioData?: unknown;
 };
 
-const bridge = globals.sharkordDesktop;
+const bridge = globals.dodecagonDesktop;
 const Generator = globals.MediaStreamTrackGenerator;
 const AudioDataCtor = globals.AudioData;
 
 if (bridge) installAudioPlaybackRecovery();
 
 if (!bridge) {
-  console.warn('[sharkord-desktop] preload bridge missing, screen-share audio not patched');
+  console.warn('[dodecagon-desktop] preload bridge missing, screen-share audio not patched');
 } else if (!navigator.mediaDevices) {
-  console.warn('[sharkord-desktop] mediaDevices unavailable on this page, not patching');
+  console.warn('[dodecagon-desktop] mediaDevices unavailable on this page, not patching');
 } else {
   if (typeof Generator !== 'function' || typeof AudioDataCtor !== 'function') {
     console.warn(
-      '[sharkord-desktop] MediaStreamTrackGenerator/AudioData unavailable; no audio from our own capture'
+      '[dodecagon-desktop] MediaStreamTrackGenerator/AudioData unavailable; no audio from our own capture'
     );
   }
   installGetDisplayMediaPatch({

@@ -22,8 +22,7 @@ export type Config = {
   /** Where client errors are reported; null keeps reporting off. */
   sentryDsn: string | null;
   /** Where the first design kept its virtual-sink state; only used for cleanup. */
-  legacyStatePath: string;
-  /** Run the tone-exclusion self test instead of the normal UI. */
+  legacyStatePath: string;  /** Run the tone-exclusion self test instead of the normal UI. */
   selftest: boolean;
   /** Tear down leftovers from an older version and exit. */
   cleanup: boolean;
@@ -44,11 +43,12 @@ export const loadConfig = (
   platform: NodeJS.Platform = process.platform,
   storedSentryDsn: string | null = null
 ): Config => ({
-  url: argValue(argv, 'url') ?? env.SHARKORD_URL ?? null,
+  url: argValue(argv, 'url') ?? env.DODECAGON_URL ?? null,
   mode: resolveMode(platform),
-  tapName: env.SHARKORD_TAP_NAME ?? 'sharkord_capture',
-  debugPcm: env.SHARKORD_DEBUG_PCM ?? null,
-  sentryDsn: env.SHARKORD_SENTRY_DSN ?? storedSentryDsn,
+  tapName: env.DODECAGON_TAP_NAME ?? 'dodecagon_capture',
+  debugPcm: env.DODECAGON_DEBUG_PCM ?? null,
+  sentryDsn: env.DODECAGON_SENTRY_DSN ?? storedSentryDsn,
+  // the first design wrote its state under the old name, and the cleanup looks for it there
   legacyStatePath: join(env.XDG_RUNTIME_DIR ?? homedir(), 'sharkord-desktop.json'),
   selftest: argv.includes('--selftest'),
   cleanup: argv.includes('--cleanup'),

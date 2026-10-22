@@ -335,7 +335,7 @@ export class TapCapture {
   constructor(private readonly options: TapOptions = {}) {
     this.spawner = options.spawner ?? defaultSpawner;
     this.runner = options.runner ?? defaultRunner;
-    this.tapName = options.tapName ?? 'sharkord_capture';
+    this.tapName = options.tapName ?? 'dodecagon_capture';
     this.ownsProcess = options.ownsProcess ?? ((pid) => isOwnProcess(pid));
     this.captureProcess = options.captureProcess ?? ((pid) => isOwnProcess(pid));
     this.processStat = options.processStat ?? readProcessStat;
@@ -618,9 +618,9 @@ export class TapCapture {
       '-P',
       `node.name=${this.tapName}`,
       '-P',
-      'application.name=sharkord-desktop',
+      'application.name=dodecagon-desktop',
       '-P',
-      'node.description=sharkord-desktop',
+      'node.description=dodecagon-desktop',
       '--container=raw',
       '--format',
       'f32',

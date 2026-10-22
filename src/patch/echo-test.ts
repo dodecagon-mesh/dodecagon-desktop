@@ -92,7 +92,7 @@ export const probeOwnAudio = async (
   track: MediaStreamTrack,
   options: EchoProbeOptions = {}
 ): Promise<boolean | null> => {
-  const log = options.log ?? ((...args: unknown[]) => console.warn('[sharkord-desktop]', ...args));
+  const log = options.log ?? ((...args: unknown[]) => console.warn('[dodecagon-desktop]', ...args));
   const createElement = options.createElement ?? ((tag: 'audio') => document.createElement(tag));
   const root = options.root ?? document;
   const AudioContextClass = (window as unknown as { AudioContext?: AudioContextCtor; webkitAudioContext?: AudioContextCtor })

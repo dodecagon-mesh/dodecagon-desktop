@@ -25,7 +25,7 @@ export const installAudioPlaybackRecovery = (doc: Document = document): (() => v
     const now = Date.now();
     attempts = attempts.filter((time) => now - time < RECOVERY_WINDOW_MS);
     if (attempts.length >= MAX_RECOVERIES) {
-      console.warn('[sharkord-desktop] audio playback recovery paused after repeated failures; reload the client');
+      console.warn('[dodecagon-desktop] audio playback recovery paused after repeated failures; reload the client');
       return;
     }
     attempts.push(now);
@@ -41,10 +41,10 @@ export const installAudioPlaybackRecovery = (doc: Document = document): (() => v
         return;
       }
       void element.play().catch((error: unknown) => {
-        console.warn('[sharkord-desktop] audio playback restart failed:', error);
+        console.warn('[dodecagon-desktop] audio playback restart failed:', error);
       });
     });
-    console.info('[sharkord-desktop] rebuilt stream audio playback:', elements.length);
+    console.info('[dodecagon-desktop] rebuilt stream audio playback:', elements.length);
   };
 
   doc.addEventListener('play', onPlay, true);
