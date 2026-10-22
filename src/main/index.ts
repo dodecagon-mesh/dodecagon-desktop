@@ -22,6 +22,7 @@ import { createPortalSelectionObserver, type PortalSelectionObserver } from './p
 import { PcmDelivery } from './pcm-delivery';
 import { attachRendererConsoleLogging, describeEnvironment, getLogsDirectory, initializeLogging, log, readLogTail } from './logger';
 import { removeLegacyRouting } from './legacy';
+import { reapStaleHelpers } from './orphans';
 import { bindPortalCaptureTarget, resolveLinuxAudioTarget } from './linux-audio';
 import { displayCapturerRequest, pickDisplaySource, registerPickerIpc } from './picker';
 import {
@@ -477,12 +478,12 @@ const registerIpc = (): void => {
   });
 };
 
-const shutdown = async (code: number, options: { quit?: boolean } = {}): Promise<void> => {
+const shutdown = async (code: number): Promise<void> => {
   if (shuttingDown) return;
   shuttingDown = true;
   stopVoiceShortcuts?.();
   stopVoiceShortcuts = null;
-  log(`shutting down (code ${code}${options.quit === false ? ', exiting directly' : ''})`);
+  log(`shutting down (code ${code})`);
   try {
     captureSource?.stop();
   } catch (error) {
@@ -506,8 +507,12 @@ const shutdown = async (code: number, options: { quit?: boolean } = {}): Promise
       log('installing the downloaded update on the way out');
       return;
     }
-    if (options.quit === false) app.exit(0);
-    else app.quit();
+    // A graceful quit takes the helper processes down with it. app.exit() skips that and leaves
+    // them behind, still running from the installation.
+    //
+    // The request is made on the next tick: Electron drops a quit that is asked for while
+    // another one is still being dispatched, and the quit would never finish.
+    setImmediate(() => app.quit());
     return;
   }
   app.exit(code);
@@ -519,6 +524,10 @@ const bootstrap = async (): Promise<void> => {
     app.exit(0);
     return;
   }
+
+  // A previous instance that was killed outright leaves its helpers behind. They are of no use to
+  // anybody, so they go before this instance starts its own.
+  reapStaleHelpers(log);
 
   void app.getGPUInfo('basic').then((info) => {
     log('GPU information:', info, app.getGPUFeatureStatus());
@@ -1016,11 +1025,13 @@ if (!app.requestSingleInstanceLock()) {
     if (shuttingDown) return;
     event.preventDefault();
     // We just cancelled this quit, so we must finish the job ourselves.
-    void shutdown(0, { quit: false });
+    void shutdown(0);
   });
 
-  process.on('SIGINT', () => void shutdown(0, { quit: false }));
-  process.on('SIGTERM', () => void shutdown(0, { quit: false }));
+  // A caught signal is a request to quit, not a reason to exit abruptly: the graceful path takes
+  // the helper processes down with it.
+  process.on('SIGINT', () => void shutdown(0));
+  process.on('SIGTERM', () => void shutdown(0));
 
   app.whenReady().then(bootstrap).catch((error) => {
     log('startup failed:', error);
