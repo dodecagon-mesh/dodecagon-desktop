@@ -4,4 +4,5 @@ dist/
 release/
 native/out/*
 !native/out/.gitkeep
+.verification/
 
