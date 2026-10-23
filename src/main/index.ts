@@ -40,7 +40,9 @@ import { TapCapture, type TapTarget } from './tap';
 import { WindowsCapture, helperExists, windowsTargetForSource, type WindowsCaptureTarget } from './windows-capture';
 import { checkForUpdatesNow, installPendingUpdateSilently, setupAutoUpdates } from './updater';
 import { buildTrayMenuTemplate } from './tray-menu';
+import { buildTrayMenuTemplate } from './tray-menu';
 import { DEFAULT_SCALE, readScale, saveScale, scaleStep } from './scale';
+import { keepClientDocumentFresh, readServerVersion } from './client-freshness';
 import { writeWav } from './wav';
 import { startWindowsVoiceShortcuts } from './windows-voice-shortcuts';
 
@@ -96,6 +98,8 @@ const captureSource = windowsCapture ?? (config.mode === 'capture' ? tap : null)
 const captureKind = windowsCapture ? 'windows' : captureSource ? 'pipewire' : 'none';
 
 let mainWindow: BrowserWindow | null = null;
+/** The version of the server the loaded client came from. */
+let lastServerVersion: string | null = null;
 let tray: Tray | null = null;
 let shuttingDown = false;
 let stopVoiceShortcuts: (() => void) | null = null;
@@ -543,6 +547,8 @@ const bootstrap = async (): Promise<void> => {
   await session.defaultSession.setProxy({ mode: 'direct' });
 
   installPermissionHandlers(() => allowedOrigin);
+  // the client is a web app that is published in place, its document is never served from the cache
+  keepClientDocumentFresh(session.defaultSession);
   registerPickerIpc();
   registerIpc();
 
@@ -560,8 +566,28 @@ const bootstrap = async (): Promise<void> => {
     mainWindow.focus();
   };
 
+  // A client published while the app was open is picked up the next time the
+  // window comes back: the server reports its version, a change means a reload.
+  const refreshClientWhenOutdated = async (): Promise<void> => {
+    const target = mainWindow;
+    if (!target || target.isDestroyed() || target.webContents.isDestroyed()) return;
+    if (activeRoute.kind !== 'client') return;
+    const version = await readServerVersion(activeRoute.url);
+    if (!version || version === lastServerVersion) return;
+    lastServerVersion = version;
+    log('the server runs a new client, reloading');
+    try {
+      target.webContents.reloadIgnoringCache();
+    } catch (error) {
+      log('could not reload the client:', error);
+    }
+  };
+
   const attachWindow = (window: BrowserWindow): void => {
     attachRendererConsoleLogging(window.webContents, config.verboseLogs);
+    window.on('focus', () => {
+      void refreshClientWhenOutdated();
+    });
     const webUrl = (raw: string): URL | null => {
       let url: URL;
       try {
@@ -724,7 +750,10 @@ const bootstrap = async (): Promise<void> => {
         })
       )
     );
-    tray.on('click', showWindow);
+    tray.on('click', () => {
+      showWindow();
+      void refreshClientWhenOutdated();
+    });
 
   } catch (error) {
     if (tray && !tray.isDestroyed()) tray.destroy();
@@ -899,7 +928,11 @@ const bootstrap = async (): Promise<void> => {
       return false;
     }
     if (cancelled()) return false;
+<<<<<<< HEAD
     applyScale(readScale(settingsPath));
+=======
+    lastServerVersion = await readServerVersion(normalized);
+>>>>>>> b4d235f (feat(DOD-115): always load the last published client)
     log('client loaded:', normalized);
 
     try {
