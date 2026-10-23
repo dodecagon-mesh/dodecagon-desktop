@@ -39,6 +39,7 @@ import { captureError, initSentry } from './sentry';
 import { TapCapture, type TapTarget } from './tap';
 import { WindowsCapture, helperExists, windowsTargetForSource, type WindowsCaptureTarget } from './windows-capture';
 import { checkForUpdatesNow, installPendingUpdateSilently, setupAutoUpdates } from './updater';
+import { buildTrayMenuTemplate } from './tray-menu';
 import { writeWav } from './wav';
 import { startWindowsVoiceShortcuts } from './windows-voice-shortcuts';
 
@@ -706,23 +707,21 @@ const bootstrap = async (): Promise<void> => {
     tray = new Tray(nativeImage.createFromPath(iconPath));
     tray.setToolTip('Dodecagon');
     tray.setContextMenu(
-      Menu.buildFromTemplate([
-        { label: 'Show Dodecagon', click: showWindow },
-        {
-          label: 'Change server…',
-          click: () => {
+      Menu.buildFromTemplate(
+        buildTrayMenuTemplate({
+          showWindow,
+          changeServer: () => {
             showWindow();
             void loadPicker();
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Quit',
-          click: () => {
+          },
+          checkForUpdates: () => {
+            void checkForUpdatesNow(log);
+          },
+          quit: () => {
             void shutdown(0);
           }
-        }
-      ])
+        })
+      )
     );
     tray.on('click', showWindow);
 
