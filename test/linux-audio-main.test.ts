@@ -75,7 +75,8 @@ vi.mock('electron', () => ({
   Notification: { isSupported: () => false },
   session: { defaultSession: {
     setProxy: async () => {}, setPermissionRequestHandler() {}, setPermissionCheckHandler() {},
-    setDisplayMediaRequestHandler: (handler: any) => { world.display = handler; }
+    setDisplayMediaRequestHandler: (handler: any) => { world.display = handler; },
+    webRequest: { onHeadersReceived() {} }
   } },
   ipcMain: { on() {}, handle: (channel: string, handler: any) => world.handlers.set(channel, handler) },
   desktopCapturer: { getSources: world.getSources },
