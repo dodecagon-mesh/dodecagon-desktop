@@ -928,11 +928,8 @@ const bootstrap = async (): Promise<void> => {
       return false;
     }
     if (cancelled()) return false;
-<<<<<<< HEAD
     applyScale(readScale(settingsPath));
-=======
     lastServerVersion = await readServerVersion(normalized);
->>>>>>> b4d235f (feat(DOD-115): always load the last published client)
     log('client loaded:', normalized);
 
     try {
