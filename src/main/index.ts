@@ -40,6 +40,7 @@ import { TapCapture, type TapTarget } from './tap';
 import { WindowsCapture, helperExists, windowsTargetForSource, type WindowsCaptureTarget } from './windows-capture';
 import { checkForUpdatesNow, installPendingUpdateSilently, setupAutoUpdates } from './updater';
 import { buildTrayMenuTemplate } from './tray-menu';
+import { DEFAULT_SCALE, readScale, saveScale, scaleStep } from './scale';
 import { writeWav } from './wav';
 import { startWindowsVoiceShortcuts } from './windows-voice-shortcuts';
 
@@ -734,6 +735,26 @@ const bootstrap = async (): Promise<void> => {
     });
   }
 
+  const applyScale = (scale: number): void => {
+    const target = mainWindow;
+    if (!target || target.isDestroyed() || target.webContents.isDestroyed()) return;
+    try {
+      target.webContents.setZoomFactor(scale);
+    } catch (error) {
+      log('could not apply the client scale:', error);
+    }
+  };
+
+  const setScale = (scale: number): void => {
+    applyScale(scale);
+    saveScale(settingsPath, scale);
+    log('client scale set to', scale);
+  };
+
+  const changeScale = (direction: 1 | -1): void => {
+    setScale(scaleStep(readScale(settingsPath), direction));
+  };
+
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
       {
@@ -825,6 +846,32 @@ const bootstrap = async (): Promise<void> => {
           { role: 'quit' }
         ]
       },
+      {
+        label: 'Scale',
+        submenu: [
+          {
+            label: 'Zoom in',
+            accelerator: 'CmdOrCtrl+=',
+            click: () => {
+              changeScale(1);
+            }
+          },
+          {
+            label: 'Zoom out',
+            accelerator: 'CmdOrCtrl+-',
+            click: () => {
+              changeScale(-1);
+            }
+          },
+          {
+            label: 'Reset zoom',
+            accelerator: 'CmdOrCtrl+0',
+            click: () => {
+              setScale(DEFAULT_SCALE);
+            }
+          }
+        ]
+      },
       { role: 'editMenu' },
       { role: 'viewMenu' }
     ])
@@ -852,6 +899,7 @@ const bootstrap = async (): Promise<void> => {
       return false;
     }
     if (cancelled()) return false;
+    applyScale(readScale(settingsPath));
     log('client loaded:', normalized);
 
     try {
