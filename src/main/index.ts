@@ -40,7 +40,6 @@ import { TapCapture, type TapTarget } from './tap';
 import { WindowsCapture, helperExists, windowsTargetForSource, type WindowsCaptureTarget } from './windows-capture';
 import { checkForUpdatesNow, installPendingUpdateSilently, setupAutoUpdates } from './updater';
 import { buildTrayMenuTemplate } from './tray-menu';
-import { buildTrayMenuTemplate } from './tray-menu';
 import { DEFAULT_SCALE, readScale, saveScale, scaleStep } from './scale';
 import { keepClientDocumentFresh, readServerVersion } from './client-freshness';
 import { writeWav } from './wav';
