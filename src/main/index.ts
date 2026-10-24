@@ -44,6 +44,7 @@ import { DEFAULT_SCALE, readScale, saveScale, scaleStep } from './scale';
 import { keepClientDocumentFresh, readServerVersion } from './client-freshness';
 import { writeWav } from './wav';
 import { startWindowsVoiceShortcuts } from './windows-voice-shortcuts';
+import { HolepunchMedia, registerHolepunchMediaIpc } from './holepunch-media';
 
 initializeLogging();
 
@@ -120,6 +121,12 @@ let activeWindowsSession: number | null = null;
 let captureDocument = 0;
 const pcmDelivery = new PcmDelivery();
 let pcmSessionId: number | null = null;
+const holepunchMedia = new HolepunchMedia((event) => {
+  const contents = mainWindow?.webContents;
+  if (shuttingDown || !contents || contents.isDestroyed() || contents.isCrashed() ||
+      !isServerOrigin(contents.getURL(), allowedOrigin)) return;
+  try { contents.send('media:closed', event); } catch (error) { log('media close notification failed:', error); }
+});
 
 const discardPendingLinuxAudioGrant = (): void => {
   const audioAbort = pendingLinuxAudioAbort;
@@ -134,6 +141,7 @@ const discardPendingLinuxAudioGrant = (): void => {
 };
 
 const stopDocumentCapture = (): void => {
+  holepunchMedia.closeAll().catch((error) => log('media document cleanup failed:', error));
   discardPendingLinuxAudioGrant();
   pcmDelivery.stop();
   pcmSessionId = null;
@@ -350,6 +358,7 @@ const installPermissionHandlers = (origin: () => string): void => {
 };
 
 const registerIpc = (): void => {
+  registerHolepunchMediaIpc(ipcMain, holepunchMedia, () => shuttingDown ? null : mainWindow, () => allowedOrigin);
   ipcMain.handle('patch:source', async () => readFile(join(__dirname, 'patch.js'), 'utf8'));
   ipcMain.on('pcm:ack', (event, sessionId: unknown, sequence: unknown) => {
     if (event.sender !== mainWindow?.webContents || event.senderFrame !== event.sender.mainFrame) return;
@@ -488,6 +497,7 @@ const shutdown = async (code: number): Promise<void> => {
   shuttingDown = true;
   stopVoiceShortcuts?.();
   stopVoiceShortcuts = null;
+  await holepunchMedia.closeAll();
   log(`shutting down (code ${code})`);
   try {
     captureSource?.stop();
@@ -1057,6 +1067,7 @@ const bootstrap = async (): Promise<void> => {
     log,
     beforeInstall: () => {
       shuttingDown = true;
+      holepunchMedia.closeAll().catch((error) => log('media shutdown cleanup failed:', error));
     }
   });
 

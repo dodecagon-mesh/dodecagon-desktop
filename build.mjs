@@ -35,7 +35,8 @@ await Promise.all([
     outfile: 'dist/main.js',
     platform: 'node',
     format: 'cjs',
-    external: ['electron']
+    // Preserve HyperDHT's relative native addon loaders and their prebuild directories.
+    external: ['electron', 'hyperdht']
   }),
   build({
     ...shared,
