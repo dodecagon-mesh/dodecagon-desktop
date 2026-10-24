@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DesktopMedia } from '../src/shared/media';
 
 type IpcHandler = (...args: unknown[]) => void;
 
@@ -31,6 +32,7 @@ vi.mock('electron', () => ({
 }));
 
 type Bridge = {
+  media: DesktopMedia;
   acquireCapture(): Promise<void>;
   releaseCapture(): Promise<void>;
   onPcm(callback: (chunk: Uint8Array, firstSample?: number) => void): () => void;
@@ -186,5 +188,36 @@ describe('preload bridge: capture sessions', () => {
     expect(chunks).toEqual([[4]]);
     await bridge.releaseCapture();
     expect(electron.invoke).toHaveBeenLastCalledWith('capture:release', undefined);
+  });
+});
+
+describe('preload bridge: native media', () => {
+  it('exposes only the versioned session API, not raw UDP access', async () => {
+    const { media } = await loadBridge();
+    expect(Object.keys(media).sort()).toEqual(['close', 'connect', 'create', 'onClosed', 'version']);
+    expect(media.version).toBe(1);
+    const sessionId = '01020304-1234-4123-8123-010203040506';
+    const remotePublicKey = 'ab'.repeat(32);
+    electron.invoke.mockResolvedValueOnce({ publicKey: 'cd'.repeat(32), port: 12345 });
+    await expect(media.create({ sessionId })).resolves.toEqual({ publicKey: 'cd'.repeat(32), port: 12345 });
+    await media.connect({ sessionId, remotePublicKey, initiator: false });
+    await media.close({ sessionId });
+    expect(electron.invoke).toHaveBeenCalledWith('media:create', { sessionId });
+    expect(electron.invoke).toHaveBeenCalledWith('media:connect', { sessionId, remotePublicKey, initiator: false });
+    expect(electron.invoke).toHaveBeenCalledWith('media:close', { sessionId });
+  });
+
+  it('delivers session closure notifications and detaches the exact listener', async () => {
+    const { media } = await loadBridge();
+    const callback = vi.fn();
+    const unsubscribe = media.onClosed(callback);
+    electron.emit('media:closed', null);
+    electron.emit('media:closed', { sessionId: 42 });
+    expect(callback).not.toHaveBeenCalled();
+    electron.emit('media:closed', { sessionId: 'session-a' });
+    expect(callback).toHaveBeenCalledExactlyOnceWith({ sessionId: 'session-a' });
+    unsubscribe();
+    electron.emit('media:closed', { sessionId: 'session-b' });
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 });

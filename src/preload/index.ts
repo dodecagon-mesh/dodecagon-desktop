@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron';
 import { PickerPayload } from '../main/picker';
+import type { DesktopMedia, MediaClosedEvent, MediaConnectInput, MediaSessionInput } from '../shared/media';
 
 type PcmCallback = (chunk: Uint8Array, firstSample?: number) => void;
 const pcmListeners = new Set<PcmCallback>();
@@ -51,6 +52,21 @@ ipcRenderer.on('capture:ended', ((_event: unknown, sessionId?: number) => {
 }) as never);
 
 const bridge = {
+  media: {
+    version: 1,
+    create: (input: MediaSessionInput) => ipcRenderer.invoke('media:create', input),
+    connect: (input: MediaConnectInput) => ipcRenderer.invoke('media:connect', input),
+    close: (input: MediaSessionInput) => ipcRenderer.invoke('media:close', input),
+    onClosed: (callback: (event: MediaClosedEvent) => void): (() => void) => {
+      const handler = (_event: unknown, payload: unknown): void => {
+        if (!payload || typeof payload !== 'object' || !('sessionId' in payload) ||
+            typeof payload.sessionId !== 'string') return;
+        callback({ sessionId: payload.sessionId });
+      };
+      ipcRenderer.on('media:closed', handler);
+      return () => { ipcRenderer.off('media:closed', handler); };
+    }
+  } satisfies DesktopMedia,
   /** The page picks its capture strategy from this. */
   platform: process.platform,
   /** 'pipewire' | 'windows' | 'none' — whether the app captures share audio itself (from main). */
