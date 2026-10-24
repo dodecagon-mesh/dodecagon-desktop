@@ -1,4 +1,5 @@
-import { copyFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { app, dialog } from 'electron';
 import { autoUpdater } from 'electron-updater';
 
@@ -16,15 +17,28 @@ const githubFeed = (): { provider: 'github'; owner: 'dodecagon-mesh'; repo: 'dod
   repo: 'dodecagon-desktop'
 });
 
+/** electron-builder records the Linux package type next to the app resources. */
+const packageManaged = (): boolean => {
+  if (process.platform !== 'linux') return false;
+  try {
+    return readFileSync(join(process.resourcesPath, 'package-type'), 'utf8').trim() === 'pacman';
+  } catch {
+    return false;
+  }
+};
+
 /**
- * Updates come from the release page: NSIS on Windows and the AppImage on Linux both replace
- * themselves in place. Package-managed installs (deb/pacman) are updated by their package manager,
- * and electron-updater says so instead of failing silently.
+ * Updates come from the release page: the Windows NSIS installer replaces itself in place. The
+ * Linux client is an Arch package, so pacman owns its updates and the app never replaces its files.
  */
 export const setupAutoUpdates = (hooks: UpdaterHooks): void => {
   if (!app.isPackaged) return;
 
   const { log } = hooks;
+  if (packageManaged()) {
+    log('updates are managed by pacman');
+    return;
+  }
   // Point the updater somewhere else (a local server, a mirror) for testing or self-hosting.
   const feed = process.env.DODECAGON_UPDATE_FEED;
   if (feed) autoUpdater.setFeedURL({ provider: 'generic', url: feed });
@@ -78,21 +92,8 @@ export const setupAutoUpdates = (hooks: UpdaterHooks): void => {
  * Replaces the installed app with a downloaded update without relaunching it, so an explicit quit
  * really quits. Returns false when there is nothing to install.
  */
-export const installPendingUpdateSilently = (
-  log: (...parts: unknown[]) => void = () => {}
-): boolean => {
+export const installPendingUpdateSilently = (): boolean => {
   if (pendingVersion === null) return false;
-
-  // The AppImage updater removes the running image before moving the new one in; if that window is
-  // interrupted the app would be left without a binary. Keep a copy the launcher can restore.
-  const image = process.env.APPIMAGE;
-  if (image) {
-    try {
-      if (!existsSync(`${image}.bak`)) copyFileSync(image, `${image}.bak`);
-    } catch (error) {
-      log('could not back up the AppImage before updating:', error);
-    }
-  }
 
   autoUpdater.quitAndInstall(true, false);
   return true;
@@ -102,6 +103,15 @@ export const installPendingUpdateSilently = (
 export const checkForUpdatesNow = async (log: (...parts: unknown[]) => void): Promise<void> => {
   if (!app.isPackaged) {
     log('update check skipped: this is a development build');
+    return;
+  }
+  if (packageManaged()) {
+    await dialog.showMessageBox({
+      type: 'info',
+      title: 'Updates',
+      message: 'Dodecagon is installed as a pacman package.',
+      detail: 'Update it with `sudo pacman -Syu`; the app does not replace its own files.'
+    });
     return;
   }
 
@@ -130,7 +140,7 @@ export const checkForUpdatesNow = async (log: (...parts: unknown[]) => void): Pr
       title: 'Update check failed',
       message,
       detail:
-        'Automatic updates work for the Windows installer and the Linux AppImage. Package-manager installs update through their package manager.'
+        'Automatic updates work for the Windows installer.'
     });
   }
 };

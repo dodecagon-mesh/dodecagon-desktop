@@ -24,7 +24,6 @@
     "selftest": "bun run build && electron . --selftest",
     "dist": "bun run build && electron-builder --publish never",
     "dist:arch": "bun run build && node scripts/dist-arch.mjs",
-    "dist:linux": "bun run build && node scripts/dist-linux.mjs",
     "dist:win": "bun run build && electron-builder --win --x64 --publish never",
     "dist:mac": "bun run build && electron-builder --mac --x64 --arm64 --publish never"
   },
@@ -43,8 +42,6 @@
     ],
     "linux": {
       "target": [
-        "AppImage",
-        "deb",
         "pacman"
       ],
       "extraResources": [

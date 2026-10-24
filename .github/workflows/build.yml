@@ -53,9 +53,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-22.04
-            command: bun run dist:linux
+            command: bun run dist:arch
           - os: ubuntu-22.04-arm
-            command: bun run dist:linux
+            command: bun run dist:arch
           - os: windows-latest
             command: bun run dist:win
           - os: macos-latest
@@ -107,7 +107,7 @@ jobs:
           # 404s. refresh the lists on every run, and skip the translation indexes:
           # they are a sixth of the index traffic and nothing here needs them.
           sudo apt-get update -o Acquire::Languages=none
-          sudo apt-get install -y --no-install-recommends build-essential pkg-config libsystemd-dev dbus libarchive-tools squashfs-tools
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libsystemd-dev dbus libarchive-tools
       - name: Native portal helper tests (private D-Bus)
         if: runner.os == 'Linux'
         run: bun run test:native-portal
@@ -145,36 +145,24 @@ jobs:
           assert os.access(helpers[0], os.X_OK), helpers[0]
           expected = built.read_bytes()
           assert helpers[0].read_bytes() == expected, 'unpacked helper differs from build'
-          archives = [p for p in pathlib.Path('release').iterdir()
-                      if p.suffix in ('.AppImage', '.deb', '.pacman')]
-          assert len(archives) == 3, archives
-          assert {p.suffix for p in archives} == {'.AppImage', '.deb', '.pacman'}
+          archives = list(pathlib.Path('release').glob('*.pacman'))
+          assert len(archives) == 1, archives
+          archive = archives[0]
+          assert not list(pathlib.Path('release').glob('*.AppImage')), 'AppImage is no longer a Linux target'
+          assert not list(pathlib.Path('release').glob('*.deb')), 'deb is no longer a Linux target'
+          data = archive.read_bytes()
+          info = subprocess.check_output(['bsdtar', '-xOf', '-', '.PKGINFO'], input=data).decode()
+          assert 'pkgname = dodecagon-desktop' in info, info
+          assert 'depend = http-parser' not in info, 'http-parser is not in the Arch repositories'
+          assert 'depend = libappindicator-gtk3' not in info, 'Arch names the package libappindicator'
           suffix = f'/resources/native/{name}'
-          def command(args, data=None):
-              return subprocess.check_output(args, input=data)
-          for archive in sorted(archives):
-              if archive.suffix == '.AppImage':
-                  offset = str(int(command([str(archive.resolve()), '--appimage-offset']).strip()))
-                  entries = command(['unsquashfs', '-o', offset, '-ls', str(archive)]).decode().splitlines()
-                  members = [s for s in entries if s.endswith(suffix)]
-                  assert len(members) == 1, (archive, members)
-                  member = members[0].removeprefix('squashfs-root/')
-                  actual = command(['unsquashfs', '-o', offset, '-cat', str(archive), member])
-              else:
-                  if archive.suffix == '.deb':
-                      entries = command(['ar', 't', str(archive)]).decode().splitlines()
-                      data_members = [s for s in entries if s.startswith('data.tar.')]
-                      assert len(data_members) == 1, (archive, data_members)
-                      data = command(['ar', 'p', str(archive), data_members[0]])
-                  else:
-                      data = archive.read_bytes()
-                  entries = command(['bsdtar', '-tf', '-'], data).decode().splitlines()
-                  members = [s for s in entries if s.endswith(suffix)]
-                  assert len(members) == 1, (archive, members)
-                  member = members[0]
-                  actual = command(['bsdtar', '-xOf', '-', member], data)
-              assert actual == expected, f'{archive}: packaged helper differs from build'
-              print(f'{archive.name}: verified {member} sha256={hashlib.sha256(actual).hexdigest()}')
+          entries = subprocess.check_output(['bsdtar', '-tf', '-'], input=data).decode().splitlines()
+          members = [entry for entry in entries if entry.endswith(suffix)]
+          assert len(members) == 1, (archive, members)
+          member = members[0]
+          actual = subprocess.check_output(['bsdtar', '-xOf', '-', member], input=data)
+          assert actual == expected, f'{archive}: packaged helper differs from build'
+          print(f'{archive.name}: verified {member} sha256={hashlib.sha256(actual).hexdigest()}')
           PY
       - name: Check Windows audio verification tools
         if: runner.os == 'Windows'
@@ -208,8 +196,6 @@ jobs:
           name: packages-${{ matrix.os }}
           # Installers only: release/* would also drag the unpacked app directories along.
           path: |
-            release/*.AppImage
-            release/*.deb
             release/*.exe
             release/*.pacman
             release/*.dmg

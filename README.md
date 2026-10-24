@@ -20,18 +20,16 @@ application shares carry only that application's process tree. Viewers never hea
 | **Windows** | Native process-loopback capture: screen shares exclude Dodecagon's process tree; window shares include only the selected application's process tree. Availability is determined by native activation, not a Windows-version gate. Windows audio measurements are still required; a successful build alone does not prove isolation. |
 | macOS | Wrapper only, untested. No own capture: the share carries whatever the platform gives `getDisplayMedia`, after the same proof. |
 
-- **Linux + AppImage**: the client runs from an unpacked copy of the image. A mounted AppImage can
-  lose the camera (`NotFoundError: Requested device not found`) after a second-instance handoff, and
-  its runtime can unmount the image while the client is still running, which kills the client with
-  `SIGBUS`. The unpacked copy has neither problem. The copy is refreshed whenever the image
-  changes. Install with `scripts/install-local.sh` to refresh the launcher — an AppImage update
-  alone does not replace it.
+- **Linux packaging**: the Linux build is an Arch package (`.pacman`) installed under
+  `/opt/Dodecagon` and updated with pacman. There is no AppImage, so no FUSE mount can disappear
+  from under the client, and no launcher has to unpack the image first.
 Builds for all three platforms are produced by CI.
 
 ## Install
 
-Download from [Releases](https://github.com/dodecagon-mesh/dodecagon-desktop/releases): AppImage/deb,
-Windows installer/portable, macOS dmg/zip. macOS and Windows builds are unsigned, so expect a
+Download from [Releases](https://github.com/dodecagon-mesh/dodecagon-desktop/releases): the Arch
+package (`dodecagon-desktop-<version>-linux-<arch>.pacman`, installed with `sudo pacman -U`),
+Windows installer/portable, and macOS dmg/zip. macOS and Windows builds are unsigned, so expect a
 Gatekeeper/SmartScreen warning.
 
 On first start the app asks which server to open and remembers the answer in
@@ -136,7 +134,7 @@ bun install
 bun run start          # build + launch
 bun run test           # unit tests
 bun run selftest       # Linux: real display-media patch, PCM injection and tone-exclusion check
-bun run dist:linux     # packaged builds (dist:win, dist:mac on those hosts)
+bun run dist:arch      # Arch package (dist:win, dist:mac on those hosts)
 bun run build && electron . --cleanup   # remove the virtual sink an older version left behind
 bun run build && electron . --verbose-logs   # record the client's whole console, not just errors
 bun run build && electron . --sentry-dsn=https://<key>@errors.example.com/3   # store where main process crashes are reported
@@ -153,32 +151,20 @@ bun run dist:win
 `dist:win` builds the helper before packaging and fails if compilation fails, rather than silently
 producing a Windows client without native audio capture.
 
-`scripts/install-local.sh` installs the app for the current user without root: it takes the Linux
-AppImage from the latest GitHub release into `~/.local/opt`, puts `dodecagon-desktop` on `PATH` and
-adds icon + desktop entry. The client runs from an unpacked copy of the image in `~/.local/opt`,
-and that copy is refreshed when the image changes. `DODECAGON_LOCAL_BUILD=1` builds from the
-checkout instead of downloading.
-Arch users can also `sudo pacman -U` the `.pacman` from Releases, or build it from the checkout with
-`bun run dist:arch` and install `release/dodecagon-desktop-<version>-linux-x64.pacman`. The packaged
-client runs from `/opt/Dodecagon` with no AppImage mount; pacman, not the AppImage updater, keeps it
-current. Remove an AppImage launcher entry left in `~/.local/share/applications` after switching so
-the native entry is the one that starts.
+`bun run dist:arch` builds the Arch package for the host architecture from the checkout;
+`sudo pacman -U release/dodecagon-desktop-<version>-linux-<arch>.pacman` installs it under
+`/opt/Dodecagon` with a desktop entry and icon. Pacman keeps it current; the app does not replace
+its own files.
 
 ### Updates
 
-The app checks the [release page](https://github.com/dodecagon-mesh/dodecagon-desktop/releases) shortly after
-startup and every time you pick **Server → Check for updates…**:
+The Windows client checks the [release page](https://github.com/dodecagon-mesh/dodecagon-desktop/releases)
+shortly after startup and every time you pick **Server → Check for updates…**:
 
-- **Linux clients could die with `SIGBUS`**: an AppImage keeps its content in a FUSE mount, and the
-  runtime that owns that mount can unmount it while the client is still running. The helper
-  processes of that client then have no code left to run and die with `SIGBUS`. The launcher now
-  starts an unpacked copy of the image, so there is no mount to lose. Existing installs must
-  refresh the launcher (`scripts/install-local.sh`) — an AppImage update alone does not replace the
-  launcher.
-
-- **Windows installer (NSIS)** and **Linux AppImage** replace themselves in place; a downloaded update
-  asks for a restart and is also applied on the next quit.
-- **deb / pacman** installs are updated by their package manager — the app says so instead of failing.
+- **Windows installer (NSIS)** replaces itself in place; a downloaded update asks for a restart and
+  is also applied on the next quit.
+- **Linux** has no in-app updater: the pacman package is updated with `sudo pacman -Syu`, and
+  **Server → Check for updates…** says so.
 - `DODECAGON_UPDATE_FEED=https://…` points the updater at another host (a mirror, or a local test feed).
 - Development checkouts never update themselves (`app.isPackaged` gate).
 
