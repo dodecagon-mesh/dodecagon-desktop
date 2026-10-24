@@ -158,7 +158,11 @@ AppImage from the latest GitHub release into `~/.local/opt`, puts `dodecagon-des
 adds icon + desktop entry. The client runs from an unpacked copy of the image in `~/.local/opt`,
 and that copy is refreshed when the image changes. `DODECAGON_LOCAL_BUILD=1` builds from the
 checkout instead of downloading.
-Arch users can also `sudo pacman -U` the `.pacman` from Releases.
+Arch users can also `sudo pacman -U` the `.pacman` from Releases, or build it from the checkout with
+`bun run dist:arch` and install `release/dodecagon-desktop-<version>-linux-x64.pacman`. The packaged
+client runs from `/opt/Dodecagon` with no AppImage mount; pacman, not the AppImage updater, keeps it
+current. Remove an AppImage launcher entry left in `~/.local/share/applications` after switching so
+the native entry is the one that starts.
 
 ### Updates
 
