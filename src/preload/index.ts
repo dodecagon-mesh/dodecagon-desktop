@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron';
 import { PickerPayload } from '../main/picker';
 import type { DesktopMedia, MediaClosedEvent, MediaConnectInput, MediaSessionInput } from '../shared/media';
+import type { VoiceTrayState } from '../shared/voice-state';
 
 type PcmCallback = (chunk: Uint8Array, firstSample?: number) => void;
 const pcmListeners = new Set<PcmCallback>();
@@ -52,6 +53,7 @@ ipcRenderer.on('capture:ended', ((_event: unknown, sessionId?: number) => {
 }) as never);
 
 const bridge = {
+  setVoiceState: (state: VoiceTrayState): Promise<void> => ipcRenderer.invoke('voice:state', state),
   media: {
     version: 1,
     create: (input: MediaSessionInput) => ipcRenderer.invoke('media:create', input),
