@@ -16,6 +16,7 @@ const showVersionBadge = (bridge: { appInfo?(): Promise<{ version: string }> }):
       left: '8px',
       zIndex: '2147483647',
       pointerEvents: 'none',
+      userSelect: 'none',
       font: '11px/1.4 system-ui, sans-serif',
       color: 'rgba(226, 232, 240, 0.65)',
       background: 'rgba(11, 13, 18, 0.45)',

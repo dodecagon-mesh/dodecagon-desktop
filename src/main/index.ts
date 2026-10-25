@@ -45,6 +45,7 @@ import { keepClientDocumentFresh, readServerVersion } from './client-freshness';
 import { writeWav } from './wav';
 import { startWindowsVoiceShortcuts } from './windows-voice-shortcuts';
 import { HolepunchMedia, registerHolepunchMediaIpc } from './holepunch-media';
+import { registerVoiceTrayIpc, VoiceTray } from './tray-voice-state';
 
 initializeLogging();
 
@@ -101,6 +102,7 @@ let mainWindow: BrowserWindow | null = null;
 /** The version of the server the loaded client came from. */
 let lastServerVersion: string | null = null;
 let tray: Tray | null = null;
+let voiceTray: VoiceTray | null = null;
 let shuttingDown = false;
 let stopVoiceShortcuts: (() => void) | null = null;
 let allowedOrigin = '';
@@ -359,6 +361,7 @@ const installPermissionHandlers = (origin: () => string): void => {
 
 const registerIpc = (): void => {
   registerHolepunchMediaIpc(ipcMain, holepunchMedia, () => shuttingDown ? null : mainWindow, () => allowedOrigin);
+  registerVoiceTrayIpc(ipcMain, () => shuttingDown ? null : mainWindow, () => allowedOrigin, (state) => voiceTray?.update(state));
   ipcMain.handle('patch:source', async () => readFile(join(__dirname, 'patch.js'), 'utf8'));
   ipcMain.on('pcm:ack', (event, sessionId: unknown, sequence: unknown) => {
     if (event.sender !== mainWindow?.webContents || event.senderFrame !== event.sender.mainFrame) return;
@@ -621,7 +624,9 @@ const bootstrap = async (): Promise<void> => {
       openExternal(link.href);
     });
     const stopWindowCapture = (): void => {
-      if (mainWindow === window) stopDocumentCapture();
+      if (mainWindow !== window) return;
+      voiceTray?.reset();
+      stopDocumentCapture();
     };
     window.webContents.on('did-start-navigation', (details) => {
       if (details.isMainFrame && !details.isSameDocument) stopWindowCapture();
@@ -740,7 +745,9 @@ const bootstrap = async (): Promise<void> => {
   // The window closes to the tray; the app keeps capturing and can be shown again from there.
   try {
     const iconPath = join(__dirname, 'icon.png');
-    tray = new Tray(nativeImage.createFromPath(iconPath));
+    const defaultTrayIcon = nativeImage.createFromPath(iconPath);
+    tray = new Tray(defaultTrayIcon);
+    voiceTray = new VoiceTray(tray, defaultTrayIcon);
     tray.setToolTip('Dodecagon');
     tray.setContextMenu(
       Menu.buildFromTemplate(
