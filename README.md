@@ -111,6 +111,10 @@ TMPDIR="${TMPDIR:-$HOME/.cache}" bun test/pipewire-isolation-smoke.ts --baseline
 
 Closing the window keeps the app in the tray (capture and voice stay connected) and says so once.
 If the tray is unavailable or fails during setup, closing quits instead of hiding an unreachable window.
+Since 0.6.25, compatible servers report voice state to the native tray: a crossed-out microphone
+indicates microphone mute, and crossed-out headphones indicate sound mute (taking priority when
+both are muted). The tooltip names the current state; leaving voice or reloading the client restores
+the default icon.
 Quit from the **Quit** tray item, the Server menu, or with Ctrl/Cmd+Q — all three paths are
 verified in CI-less local tests via `DODECAGON_DEBUG_QUIT_AFTER` / `DODECAGON_DEBUG_APP_QUIT_AFTER`. A downloaded update is swapped in on
 the way out **without** relaunching the app, so quitting really quits — set
