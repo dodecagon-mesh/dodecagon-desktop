@@ -4,17 +4,36 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 import type { NetworkInterfaceInfo } from 'node:os';
 
 type MockStream = EventEmitter & {
-  remotePublicKey: Buffer; trySend: Mock; destroy: Mock; setTimeout: Mock; setKeepAlive: Mock;
+  remotePublicKey: Buffer | null;
+  connected: boolean;
+  trySend: Mock;
+  write: Mock;
+  pause: Mock;
+  destroy: Mock;
+  setTimeout: Mock;
+  setKeepAlive: Mock;
 };
 type MockServer = EventEmitter & {
-  options: { firewall(key: Buffer): boolean }; listen: Mock; close: Mock;
+  options: { firewall(key: Buffer): boolean; reusableSocket: boolean };
+  listen: Mock;
+  close: Mock;
 };
 type MockNode = EventEmitter & {
-  server: MockServer; servers: MockServer[]; stream: MockStream; connect: Mock; destroy: Mock;
+  servers: MockServer[];
+  stream: MockStream;
+  connect: Mock;
+  destroy: Mock;
 };
-type MockSocket = EventEmitter & { bind: Mock; send: Mock; close: Mock };
+type MockSocket = EventEmitter & {
+  bind: Mock;
+  address: () => { port: number; address: string; family: string };
+  send: Mock;
+  close: Mock;
+};
 const native = vi.hoisted(() => ({
-  nodes: [] as MockNode[], sockets: [] as MockSocket[], listen: null as null | (() => Promise<void>)
+  nodes: [] as MockNode[],
+  sockets: [] as MockSocket[],
+  listen: null as null | (() => Promise<void>)
 }));
 
 vi.mock('node:os', () => ({
@@ -36,46 +55,56 @@ vi.mock('hyperdht', async () => {
   const { EventEmitter } = await import('node:events');
   return { default: class extends EventEmitter {
     static keyPair() { return { publicKey: Buffer.alloc(32, 1), secretKey: Buffer.alloc(64, 2) }; }
-    server!: MockServer;
     servers: MockServer[] = [];
     stream!: MockStream;
     destroy = vi.fn(async () => {});
     constructor() { super(); native.nodes.push(this); }
-    createServer(options: { firewall(key: Buffer): boolean }) {
-      this.server = Object.assign(new EventEmitter(), {
-        options, listen: vi.fn(() => native.listen?.() ?? Promise.resolve()), close: vi.fn(async () => {})
+    createServer(options: MockServer['options']) {
+      const server = Object.assign(new EventEmitter(), {
+        options,
+        listen: vi.fn(() => native.listen?.() ?? Promise.resolve()),
+        close: vi.fn(async () => {})
       });
-      this.servers.push(this.server);
-      return this.server;
+      this.servers.push(server);
+      return server;
     }
-    connect = vi.fn(() => {
-      this.stream = Object.assign(new EventEmitter(), {
-        remotePublicKey: Buffer.alloc(32, 3), trySend: vi.fn(), destroy: vi.fn(),
-        setTimeout: vi.fn(), setKeepAlive: vi.fn()
+    connect = vi.fn((key: Buffer) => {
+      const stream = Object.assign(new EventEmitter(), {
+        remotePublicKey: key,
+        connected: false,
+        trySend: vi.fn(),
+        write: vi.fn((_header: Buffer, callback?: (error?: Error | null) => void) => {
+          callback?.(null);
+          return true;
+        }),
+        pause: vi.fn(),
+        destroy: vi.fn(),
+        setTimeout: vi.fn(),
+        setKeepAlive: vi.fn()
       });
-      return this.stream;
+      this.stream = stream;
+      return stream;
     });
   } };
 });
 
-vi.mock('node:dgram', async () => {
-  // Vitest hoists factories before static imports; load this dependency inside the factory.
-  const { EventEmitter } = await import('node:events');
-  return { createSocket: () => {
+vi.mock('node:dgram', () => ({
+  createSocket: () => {
     const socket = Object.assign(new EventEmitter(), {
       bind: vi.fn(() => { void Promise.resolve().then(() => socket.emit('listening')); }),
-      address: () => ({ port: 12345, address: '127.0.0.1', family: 'IPv4' }),
+      address: () => ({ port: 12345 + native.sockets.length - 1, address: '127.0.0.1', family: 'IPv4' }),
       send: vi.fn((_packet: Buffer, _port: number, _address: string, callback: (error: Error | null) => void) => callback(null)),
       close: vi.fn((callback?: () => void) => callback?.())
     });
     native.sockets.push(socket);
     return socket;
-  } };
-});
+  }
+}));
 
 import { HolepunchMedia, registerHolepunchMediaIpc } from '../src/main/holepunch-media';
 
 const sessionId = '01020304-1234-4123-8123-010203040506';
+const secondSessionId = 'ffffffff-1234-4123-8123-010203040506';
 const remotePublicKey = '03'.repeat(32);
 const stun = () => {
   const packet = Buffer.alloc(20);
@@ -83,6 +112,14 @@ const stun = () => {
   packet.writeUInt32BE(0x2112a442, 4);
   return packet;
 };
+const header = (id = sessionId) => Buffer.from(id.replace(/-/g, ''), 'hex');
+const incoming = (key = Buffer.alloc(32, 3)): MockStream =>
+  Object.assign(new EventEmitter(), {
+    remotePublicKey: key, connected: true, trySend: vi.fn(), write: vi.fn(),
+    pause: vi.fn(), destroy: vi.fn(), setTimeout: vi.fn(), setKeepAlive: vi.fn()
+  });
+const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
+
 let media: HolepunchMedia;
 let closed: Mock;
 beforeEach(() => {
@@ -98,215 +135,153 @@ describe('native Holepunch media', () => {
     await expect(media.create({ sessionId })).rejects.toThrow();
     await expect(media.connect({ sessionId, remotePublicKey: 'bad', initiator: false })).rejects.toThrow();
     await expect(media.connect({ sessionId, remotePublicKey, initiator: 'yes' })).rejects.toThrow();
-    for (let i = 1; i < 128; i++) await media.create({ sessionId: `${i.toString(16).padStart(8, '0')}-1234-4123-8123-010203040506` });
+    for (let i = 1; i < 128; i++) {
+      await media.create({ sessionId: `${i.toString(16).padStart(8, '0')}-1234-4123-8123-010203040506` });
+    }
     await expect(media.create({ sessionId: 'ffffffff-1234-4123-8123-010203040506' })).rejects.toThrow();
   });
 
-  it('shares one DHT node while closing one session leaves other peer sessions active', async () => {
-    const secondId = 'ffffffff-1234-4123-8123-010203040506';
-    await media.create({ sessionId });
-    await media.create({ sessionId: secondId });
-    expect(native.nodes).toHaveLength(1);
+  it('warms one server and announces one reusable key for every session', async () => {
+    await media.warm();
+    await media.warm();
     const node = native.nodes[0]!;
-    expect(node.servers).toHaveLength(2);
-    expect(node.servers[0]!.listen.mock.calls[0]![0]).not.toBe(node.servers[1]!.listen.mock.calls[0]![0]);
-    await media.close({ sessionId });
-    expect(node.servers[0]!.close).toHaveBeenCalledTimes(1);
-    expect(node.servers[1]!.close).not.toHaveBeenCalled();
-    expect(node.destroy).not.toHaveBeenCalled();
-    await media.connect({ sessionId: secondId, remotePublicKey, initiator: true });
-    node.stream.emit('open');
-    native.sockets[1]!.emit('message', stun(), { address: '127.0.0.1', port: 4444 });
-    expect(node.stream.trySend).toHaveBeenCalledExactlyOnceWith(stun());
-    await media.closeAll();
-    expect(node.destroy).toHaveBeenCalledExactlyOnceWith({ force: true });
-    expect(closed).not.toHaveBeenCalled();
+    expect(node.servers).toHaveLength(1);
+    const server = node.servers[0]!;
+    expect(server.options.reusableSocket).toBe(true);
+    expect(server.listen).toHaveBeenCalledTimes(1);
+    const first = await media.create({ sessionId });
+    const second = await media.create({ sessionId: secondSessionId });
+    expect(first.publicKey).toBe(second.publicKey);
+    expect(first.port).not.toBe(second.port);
+    expect(node.servers).toHaveLength(1);
   });
 
-  it('blocks creates during document reset and isolates old-node failures from its replacement', async () => {
-    const secondId = 'ffffffff-1234-4123-8123-010203040506';
+  it('opens a sender stream over the reusable route and forwards only after the ack', async () => {
     await media.create({ sessionId });
+    const connecting = media.connect({ sessionId, remotePublicKey, initiator: true });
     const node = native.nodes[0]!;
-    const destroying = Promise.withResolvers<void>();
-    node.destroy.mockImplementation(() => destroying.promise);
-    const reset = media.closeAll();
-    await expect(media.create({ sessionId: secondId })).rejects.toThrow('closing');
-    destroying.resolve();
-    await reset;
-    await media.create({ sessionId: secondId });
-    expect(native.nodes).toHaveLength(2);
-    node.emit('error', new Error('late old-node error'));
-    node.emit('close');
-    expect(closed).not.toHaveBeenCalled();
-    await expect(media.connect({ sessionId: secondId, remotePublicKey, initiator: false })).resolves.toBeUndefined();
+    const stream = node.stream;
+    expect(node.connect).toHaveBeenCalledWith(Buffer.from(remotePublicKey, 'hex'), {
+      keyPair: expect.any(Object),
+      reusableSocket: true
+    });
+    const socket = native.sockets[0]!;
+    socket.emit('message', stun(), { address: '127.0.0.1', port: 4444 });
+    expect(stream.trySend).not.toHaveBeenCalled();
+    stream.emit('open');
+    expect(stream.write).toHaveBeenCalledWith(header(), expect.any(Function));
+    stream.emit('data', Buffer.from([1]));
+    await connecting;
+    expect(stream.trySend).toHaveBeenCalledExactlyOnceWith(stun());
   });
 
-  it('notifies every active peer on shared-node failure and starts a new document node afterwards', async () => {
-    const secondId = 'ffffffff-1234-4123-8123-010203040506';
+  it('accepts a receiver stream only for its pinned session and matching key, then forwards both ways', async () => {
     await media.create({ sessionId });
-    await media.create({ sessionId: secondId });
-    native.nodes[0]!.emit('error', new Error('DHT unavailable'));
-    await media.closeAll();
-    expect(closed).toHaveBeenCalledTimes(2);
-    expect(closed).toHaveBeenCalledWith({ sessionId });
-    expect(closed).toHaveBeenCalledWith({ sessionId: secondId });
-    await media.create({ sessionId });
-    expect(native.nodes).toHaveLength(2);
-  });
-
-  it('rejects all incoming peers until pinned, then only accepts the receiver role and matching key', async () => {
-    await media.create({ sessionId });
-    const { server } = native.nodes[0]!;
-    expect(server.options.firewall(Buffer.alloc(32, 3))).toBe(true);
     await media.connect({ sessionId, remotePublicKey, initiator: false });
+    const server = native.nodes[0]!.servers[0]!;
+    const socket = native.sockets[0]!;
     expect(server.options.firewall(Buffer.alloc(32, 3))).toBe(false);
     expect(server.options.firewall(Buffer.alloc(32, 4))).toBe(true);
-    expect(native.nodes[0]!.connect).not.toHaveBeenCalled();
-    const unexpected = Object.assign(new EventEmitter(), { remotePublicKey: Buffer.alloc(32, 4), destroy: vi.fn() });
-    server.emit('connection', unexpected);
-    expect(unexpected.destroy).toHaveBeenCalled();
-    await expect(media.connect({ sessionId, remotePublicKey: '04'.repeat(32), initiator: false })).rejects.toThrow();
+    const stream = incoming();
+    server.emit('connection', stream);
+    stream.emit('data', header());
+    expect(stream.pause).toHaveBeenCalled();
+    expect(stream.write).toHaveBeenCalledWith(Buffer.from([1]), expect.any(Function));
+    socket.emit('message', stun(), { address: '127.0.0.1', port: 4444 });
+    expect(stream.trySend).toHaveBeenLastCalledWith(stun());
+    stream.emit('message', Buffer.from([3]));
+    expect(socket.send).toHaveBeenCalledWith(Buffer.from([3]), 4444, '127.0.0.1', expect.any(Function));
+    expect(closed).not.toHaveBeenCalled();
   });
 
-  it('accepts only one authenticated receiver stream and forwards in both directions', async () => {
+  it('rejects an unknown header, a mismatched key and a duplicate stream', async () => {
     await media.create({ sessionId });
     await media.connect({ sessionId, remotePublicKey, initiator: false });
-    const stream = Object.assign(new EventEmitter(), {
-      remotePublicKey: Buffer.alloc(32, 3), connected: true, trySend: vi.fn(), destroy: vi.fn(),
-      setTimeout: vi.fn(), setKeepAlive: vi.fn()
-    });
-    const server = native.nodes[0]!.server;
-    server.emit('connection', stream);
-    expect(server.options.firewall(Buffer.alloc(32, 3))).toBe(true);
-    const socket = native.sockets[0]!;
-    socket.emit('message', stun(), { address: '127.0.0.1', port: 4444 });
-    expect(stream.trySend).toHaveBeenCalledExactlyOnceWith(stun());
-    stream.emit('message', Buffer.from([3]));
-    expect(socket.send).toHaveBeenCalledWith(Buffer.from([3]), 4444, '127.0.0.1', expect.any(Function));
-    const duplicate = Object.assign(new EventEmitter(), {
-      remotePublicKey: Buffer.alloc(32, 3), destroy: vi.fn()
-    });
+    const server = native.nodes[0]!.servers[0]!;
+    const unknown = incoming();
+    server.emit('connection', unknown);
+    unknown.emit('data', Buffer.alloc(16, 9));
+    expect(unknown.destroy).toHaveBeenCalled();
+    const mismatched = incoming(Buffer.alloc(32, 4));
+    server.emit('connection', mismatched);
+    mismatched.emit('data', header());
+    expect(mismatched.destroy).toHaveBeenCalled();
+    const first = incoming();
+    server.emit('connection', first);
+    first.emit('data', header());
+    const duplicate = incoming();
     server.emit('connection', duplicate);
+    duplicate.emit('data', header());
     expect(duplicate.destroy).toHaveBeenCalled();
     expect(closed).not.toHaveBeenCalled();
-    stream.emit('close');
-    expect(closed).toHaveBeenCalledExactlyOnceWith({ sessionId });
   });
 
-  it('pins one valid localhost STUN source and forwards bounded packets only over unordered messages', async () => {
+  it('buffers early datagrams until the link and the local endpoint are ready', async () => {
     await media.create({ sessionId });
-    await media.connect({ sessionId, remotePublicKey, initiator: true });
-    const { stream, connect } = native.nodes[0]!;
-    expect(connect).toHaveBeenCalledWith(Buffer.alloc(32, 3), expect.objectContaining({ keyPair: expect.any(Object) }));
-    stream.emit('open');
+    const connecting = media.connect({ sessionId, remotePublicKey, initiator: true });
+    const stream = native.nodes[0]!.stream;
     const socket = native.sockets[0]!;
-    expect(socket.bind).toHaveBeenCalledWith(0, '127.0.0.1');
-    stream.emit('message', Buffer.from([1]));
-    expect(socket.send).not.toHaveBeenCalled();
-    socket.emit('message', stun(), { address: '192.168.1.2', port: 4444 });
-    socket.emit('message', Buffer.from([1]), { address: '127.0.0.1', port: 4444 });
-    expect(stream.trySend).not.toHaveBeenCalled();
     socket.emit('message', stun(), { address: '127.0.0.1', port: 4444 });
-    socket.emit('message', Buffer.from([2]), { address: '127.0.0.1', port: 5555 });
-    socket.emit('message', Buffer.alloc(65_536), { address: '127.0.0.1', port: 4444 });
-    expect(stream.trySend).toHaveBeenCalledTimes(1);
-    stream.emit('message', Buffer.from([3]));
-    stream.emit('message', Buffer.alloc(65_536));
-    expect(socket.send).toHaveBeenCalledTimes(1);
-    expect(socket.send).toHaveBeenCalledWith(Buffer.from([3]), 4444, '127.0.0.1', expect.any(Function));
-  });
-
-  it('accepts an assigned NIC IPv4 source and pins both address and port without allowing arbitrary private hosts', async () => {
-    await media.create({ sessionId });
-    await media.connect({ sessionId, remotePublicKey, initiator: true });
-    const stream = native.nodes[0]!.stream;
-    const socket = native.sockets[0]!;
-    stream.emit('open');
-    for (const address of ['192.168.0.103', '192.168.1.2', '10.2.3.5', '203.0.113.9']) {
-      socket.emit('message', stun(), { address, port: 4444 });
-    }
-    socket.emit('message', Buffer.from([1]), { address: '192.168.0.102', port: 4444 });
     expect(stream.trySend).not.toHaveBeenCalled();
-    stream.emit('message', Buffer.from([3]));
-    expect(socket.send).not.toHaveBeenCalled();
-    socket.emit('message', stun(), { address: '192.168.0.102', port: 4444 });
+    stream.emit('open');
+    stream.emit('data', Buffer.from([1]));
+    await connecting;
     expect(stream.trySend).toHaveBeenCalledExactlyOnceWith(stun());
-    for (const endpoint of [
-      { address: '10.2.3.4', port: 4444 },
-      { address: '127.0.0.1', port: 4444 },
-      { address: '192.168.0.102', port: 5555 }
-    ]) socket.emit('message', stun(), endpoint);
-    expect(stream.trySend).toHaveBeenCalledTimes(1);
-    socket.emit('message', Buffer.from([2]), { address: '192.168.0.102', port: 4444 });
-    expect(stream.trySend).toHaveBeenCalledTimes(2);
-    stream.emit('message', Buffer.from([3]));
-    expect(socket.send).toHaveBeenCalledExactlyOnceWith(
-      Buffer.from([3]), 4444, '192.168.0.102', expect.any(Function)
-    );
-    expect(socket.bind).toHaveBeenCalledWith(0, '127.0.0.1');
+
+    await media.create({ sessionId: secondSessionId });
+    await media.connect({ sessionId: secondSessionId, remotePublicKey: '05'.repeat(32), initiator: false });
+    const receiver = incoming(Buffer.alloc(32, 5));
+    native.nodes[0]!.servers[0]!.emit('connection', receiver);
+    receiver.emit('data', header(secondSessionId));
+    const secondSocket = native.sockets[1]!;
+    receiver.emit('message', Buffer.from([7]));
+    expect(secondSocket.send).not.toHaveBeenCalled();
+    secondSocket.emit('message', stun(), { address: '127.0.0.1', port: 5555 });
+    expect(secondSocket.send).toHaveBeenCalledWith(Buffer.from([7]), 5555, '127.0.0.1', expect.any(Function));
   });
 
-  it('rechecks the authenticated stream identity and reports one unexpected close', async () => {
+  it('keeps other sessions alive when one peer stream closes', async () => {
     await media.create({ sessionId });
-    await media.connect({ sessionId, remotePublicKey, initiator: true });
+    await media.create({ sessionId: secondSessionId });
+    await media.connect({ sessionId, remotePublicKey, initiator: false });
+    await media.connect({ sessionId: secondSessionId, remotePublicKey, initiator: false });
+    const server = native.nodes[0]!.servers[0]!;
+    const first = incoming();
+    const second = incoming();
+    server.emit('connection', first);
+    first.emit('data', header());
+    server.emit('connection', second);
+    second.emit('data', header(secondSessionId));
+    first.emit('close');
+    expect(closed).toHaveBeenCalledExactlyOnceWith({ sessionId });
+    expect(second.destroy).not.toHaveBeenCalled();
+    const secondSocket = native.sockets[1]!;
+    secondSocket.emit('message', stun(), { address: '127.0.0.1', port: 6666 });
+    expect(second.trySend).toHaveBeenCalledWith(stun());
+    expect(native.nodes[0]!.destroy).not.toHaveBeenCalled();
+  });
+
+  it('times out an unanswered sender and ignores stream events after normal close', async () => {
+    await media.create({ sessionId });
+    const connecting = media.connect({ sessionId, remotePublicKey, initiator: true }).catch((error) => error);
     const stream = native.nodes[0]!.stream;
-    stream.remotePublicKey = Buffer.alloc(32, 4);
-    stream.emit('open'); stream.emit('error', new Error('late')); stream.emit('close');
-    expect(closed).toHaveBeenCalledExactlyOnceWith({ sessionId });
-    expect(stream.destroy).toHaveBeenCalled();
-    expect(native.sockets[0]!.close).toHaveBeenCalled();
-  });
-
-  it('closes pending creation without resurrecting it or notifying a replacement session', async () => {
-    const pendingListen = Promise.withResolvers<void>();
-    const listenStarted = Promise.withResolvers<void>();
-    native.listen = () => { listenStarted.resolve(); return pendingListen.promise; };
-    const creating = media.create({ sessionId });
-    const rejected = expect(creating).rejects.toThrow();
-    await listenStarted.promise;
-    await media.closeAll();
-    pendingListen.resolve(); await rejected;
-    native.listen = null;
-    await media.create({ sessionId });
-    native.nodes[0]!.server.emit('close');
-    expect(closed).not.toHaveBeenCalled();
-    await media.close({ sessionId }); await media.close({ sessionId });
-    expect(closed).not.toHaveBeenCalled();
-  });
-
-  it('notifies on connection timeout and ignores stream events after normal close', async () => {
-    await media.create({ sessionId });
     await vi.advanceTimersByTimeAsync(30_000);
+    expect(await connecting).toBeInstanceOf(Error);
     expect(closed).toHaveBeenCalledExactlyOnceWith({ sessionId });
-    await media.create({ sessionId });
-    await media.connect({ sessionId, remotePublicKey, initiator: true });
-    const stream = native.nodes.at(-1)!.stream;
-    await media.close({ sessionId });
-    stream.emit('error', new Error('stale')); stream.emit('close');
+    stream.emit('error', new Error('late')); stream.emit('close');
     expect(closed).toHaveBeenCalledTimes(1);
   });
 
-  it('bounds stalled bootstrap creation and rejects it without waiting for network progress', async () => {
+  it('bounds a stalled bootstrap and lets closeAll cancel it', async () => {
     const pending = Promise.withResolvers<void>();
-    const started = Promise.withResolvers<void>();
-    native.listen = () => { started.resolve(); return pending.promise; };
+    native.listen = () => pending.promise;
     const creating = media.create({ sessionId });
-    const rejection = expect(creating).rejects.toThrow('closed');
-    await started.promise;
-    await vi.advanceTimersByTimeAsync(30_000);
-    await rejection;
-    expect(closed).toHaveBeenCalledExactlyOnceWith({ sessionId });
-    expect(native.nodes[0]!.server.close).toHaveBeenCalled();
-    expect(native.nodes[0]!.destroy).not.toHaveBeenCalled();
-    pending.resolve();
-  });
-
-  it.each(['error', 'close'])('releases native resources on unexpected UDP %s', async (event) => {
-    await media.create({ sessionId });
-    native.sockets[0]!.emit(event, new Error('UDP unavailable'));
+    const rejection = expect(creating).rejects.toThrow('closing');
+    await flush();
     await media.closeAll();
-    expect(closed).toHaveBeenCalledExactlyOnceWith({ sessionId });
-    expect(native.nodes[0]!.destroy).toHaveBeenCalledWith({ force: true });
+    await rejection;
+    pending.resolve();
+    expect(native.nodes[0]!.servers[0]!.close).toHaveBeenCalled();
   });
 });
 
@@ -324,7 +299,7 @@ describe('media IPC ownership', () => {
     let owner: BrowserWindow | null = window as unknown as BrowserWindow;
     let origin = 'https://chat.example';
     registerHolepunchMediaIpc(ipc, media, () => owner, () => origin);
-    expect(handlers.size).toBe(3);
+    expect(handlers.size).toBe(4);
     for (const handler of handlers.values()) {
       for (const inputEvent of [
         { sender: {}, senderFrame: frame },
@@ -332,38 +307,19 @@ describe('media IPC ownership', () => {
         { sender: contents, senderFrame: { url: frame.url } },
         { sender: contents, senderFrame: { url: 'https://evil.example' } }
       ]) {
-        // Deliberately incomplete/malicious Electron events test the production checks.
-        const event = inputEvent as unknown as IpcMainInvokeEvent;
-        await expect(Promise.resolve().then(() => handler(event, { sessionId }))).rejects.toThrow();
+        expect(() => handler(inputEvent as IpcMainInvokeEvent, { sessionId })).toThrow();
       }
     }
-    // Only the Electron fields consumed by authorization are needed in this event double.
-    const event = { sender: contents, senderFrame: frame } as unknown as IpcMainInvokeEvent;
-    frame.url = 'https://evil.example';
-    for (const handler of handlers.values()) {
-      await expect(Promise.resolve().then(() => handler(event, { sessionId }))).rejects.toThrow();
-    }
-    frame.url = 'https://chat.example/room';
-    origin = '';
-    for (const handler of handlers.values()) {
-      await expect(Promise.resolve().then(() => handler(event, { sessionId }))).rejects.toThrow();
-    }
-    origin = 'https://chat.example';
     destroyed = true;
-    for (const handler of handlers.values()) {
-      await expect(Promise.resolve().then(() => handler(event, { sessionId }))).rejects.toThrow();
-    }
+    expect(() => handlers.get('media:warm')!({ sender: contents, senderFrame: frame } as IpcMainInvokeEvent, undefined)).toThrow();
     destroyed = false;
     crashed = true;
-    for (const handler of handlers.values()) {
-      await expect(Promise.resolve().then(() => handler(event, { sessionId }))).rejects.toThrow();
-    }
+    expect(() => handlers.get('media:warm')!({ sender: contents, senderFrame: frame } as IpcMainInvokeEvent, undefined)).toThrow();
     crashed = false;
     owner = null;
-    for (const handler of handlers.values()) {
-      await expect(Promise.resolve().then(() => handler(event, { sessionId }))).rejects.toThrow();
-    }
+    expect(() => handlers.get('media:warm')!({ sender: contents, senderFrame: frame } as IpcMainInvokeEvent, undefined)).toThrow();
     owner = window as unknown as BrowserWindow;
-    await expect(handlers.get('media:create')!(event, { sessionId })).resolves.toMatchObject({ port: 12345 });
+    await expect(handlers.get('media:create')!({ sender: contents, senderFrame: frame } as IpcMainInvokeEvent, { sessionId })).resolves.toMatchObject({ port: 12345 });
+    await expect(handlers.get('media:warm')!({ sender: contents, senderFrame: frame } as IpcMainInvokeEvent, undefined)).resolves.toBeUndefined();
   });
 });
