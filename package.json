@@ -1,6 +1,6 @@
 {
   "name": "dodecagon-desktop",
-  "version": "0.6.25",
+  "version": "0.6.26",
   "private": true,
   "description": "Dodecagon desktop client whose screen share carries the whole PC's audio except Dodecagon itself",
   "author": "Talgat Minigaliev <https://github.com/RND332>",
