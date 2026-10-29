@@ -563,6 +563,7 @@ const bootstrap = async (): Promise<void> => {
   keepClientDocumentFresh(session.defaultSession);
   registerPickerIpc();
   registerIpc();
+  void holepunchMedia.warm().catch((error) => log('media warm failed:', error));
 
   const preloadPath = join(__dirname, 'preload.js');
   if (!existsSync(preloadPath)) log('WARNING: preload bundle missing at', preloadPath);

@@ -5,6 +5,7 @@ export type MediaProxy = { publicKey: string; port: number };
 
 export interface DesktopMedia {
   version: 1;
+  warm(): Promise<void>;
   create(input: MediaSessionInput): Promise<MediaProxy>;
   connect(input: MediaConnectInput): Promise<void>;
   close(input: MediaSessionInput): Promise<void>;

@@ -194,14 +194,16 @@ describe('preload bridge: capture sessions', () => {
 describe('preload bridge: native media', () => {
   it('exposes only the versioned session API, not raw UDP access', async () => {
     const { media } = await loadBridge();
-    expect(Object.keys(media).sort()).toEqual(['close', 'connect', 'create', 'onClosed', 'version']);
+    expect(Object.keys(media).sort()).toEqual(['close', 'connect', 'create', 'onClosed', 'version', 'warm']);
     expect(media.version).toBe(1);
     const sessionId = '01020304-1234-4123-8123-010203040506';
     const remotePublicKey = 'ab'.repeat(32);
+    await media.warm();
     electron.invoke.mockResolvedValueOnce({ publicKey: 'cd'.repeat(32), port: 12345 });
     await expect(media.create({ sessionId })).resolves.toEqual({ publicKey: 'cd'.repeat(32), port: 12345 });
     await media.connect({ sessionId, remotePublicKey, initiator: false });
     await media.close({ sessionId });
+    expect(electron.invoke).toHaveBeenCalledWith('media:warm');
     expect(electron.invoke).toHaveBeenCalledWith('media:create', { sessionId });
     expect(electron.invoke).toHaveBeenCalledWith('media:connect', { sessionId, remotePublicKey, initiator: false });
     expect(electron.invoke).toHaveBeenCalledWith('media:close', { sessionId });

@@ -6,6 +6,8 @@ declare module 'hyperdht' {
     remotePublicKey: Buffer | null;
     connected: boolean;
     trySend(packet: Buffer): void;
+    write(buffer: Buffer, callback?: (error?: Error | null) => void): boolean;
+    pause(): void;
     setTimeout(milliseconds: number): void;
     setKeepAlive(milliseconds: number): void;
     destroy(): void;
@@ -16,8 +18,8 @@ declare module 'hyperdht' {
   }
   export default class DHT extends EventEmitter {
     static keyPair(): KeyPair;
-    createServer(options: { firewall(remotePublicKey: Buffer): boolean }): Server;
-    connect(publicKey: Buffer, options: { keyPair: KeyPair }): NoiseStream;
+    createServer(options: { firewall(remotePublicKey: Buffer): boolean; reusableSocket: boolean }): Server;
+    connect(publicKey: Buffer, options: { keyPair: KeyPair; reusableSocket: boolean }): NoiseStream;
     destroy(options: { force: boolean }): Promise<void>;
   }
 }

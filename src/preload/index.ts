@@ -56,6 +56,7 @@ const bridge = {
   setVoiceState: (state: VoiceTrayState): Promise<void> => ipcRenderer.invoke('voice:state', state),
   media: {
     version: 1,
+    warm: () => ipcRenderer.invoke('media:warm'),
     create: (input: MediaSessionInput) => ipcRenderer.invoke('media:create', input),
     connect: (input: MediaConnectInput) => ipcRenderer.invoke('media:connect', input),
     close: (input: MediaSessionInput) => ipcRenderer.invoke('media:close', input),
